@@ -1,0 +1,1764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>撸了么 - 今天你撸了吗？</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0d0d0d;
+            --bg-sidebar: #171717;
+            --bg-card: #1e1e1e;
+            --bg-hover: #2a2a2a;
+            --accent-pink: #ff2d75;
+            --accent-cyan: #00f5ff;
+            --accent-purple: #a855f7;
+            --accent-yellow: #ffd700;
+            --text-primary: #ececec;
+            --text-secondary: #8e8e8e;
+            --border-color: #2f2f2f;
+            --sidebar-width: 260px;
+            --sidebar-collapsed: 0px;
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            display: flex;
+            overflow: hidden;
+        }
+
+        .hidden { display: none !important; }
+
+        /* ========== 侧边栏 ========== */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: width 0.25s ease, transform 0.25s ease;
+            z-index: 100;
+        }
+
+        .sidebar.collapsed {
+            width: var(--sidebar-collapsed);
+            transform: translateX(calc(-1 * var(--sidebar-width)));
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-logo {
+            font-family: 'ZCOOL KuaiLe', cursive;
+            font-size: 1.6rem;
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .sidebar-toggle {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            width: 100%;
+            padding: 12px 14px;
+            margin-bottom: 4px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: left;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .nav-item.active {
+            background: var(--bg-hover);
+            color: var(--accent-cyan);
+        }
+
+        .nav-item .icon {
+            font-size: 1.15rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .user-card {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--bg-hover);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-weight: 700;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-streak {
+            font-size: 0.8rem;
+            color: var(--accent-yellow);
+        }
+
+        .logout-btn {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 45, 117, 0.15);
+            border-color: var(--accent-pink);
+            color: var(--accent-pink);
+        }
+
+        /* ========== 移动端侧边栏切换按钮 ========== */
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 200;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-sidebar);
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        /* ========== 主内容区 ========== */
+        .main-container {
+            flex: 1;
+            height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-content {
+            flex: 1;
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        /* ========== 通用组件 ========== */
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .panel-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+        }
+
+        .input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(0, 245, 255, 0.1);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .btn.primary {
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+            color: #fff;
+        }
+
+        .btn.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(255, 45, 117, 0.3);
+        }
+
+        .btn.ghost {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn.ghost:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .btn.full { width: 100%; }
+        .btn.small { padding: 8px 14px; font-size: 0.85rem; }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .hint {
+            font-size: 0.9rem;
+            min-height: 22px;
+            color: var(--text-secondary);
+        }
+        .hint.success { color: #22c55e; }
+        .hint.error { color: #ef4444; }
+
+        /* ========== 登录/注册卡片 ========== */
+        .auth-card {
+            max-width: 400px;
+            margin: 60px auto;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .auth-tab.active {
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+            border-color: transparent;
+            color: #fff;
+        }
+
+        /* ========== 首页视图 ========== */
+        .home-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .home-logo {
+            font-family: 'ZCOOL KuaiLe', cursive;
+            font-size: 3rem;
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .home-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .status-box {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .status-date {
+            color: var(--accent-cyan);
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        .status-text {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+
+        .status-text.done {
+            color: var(--accent-pink);
+        }
+
+        .status-count {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-yellow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-top: 8px;
+        }
+
+        .clear-btn {
+            margin-top: 12px;
+        }
+
+        /* ========== 香蕉交互区 ========== */
+        .banana-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .banana-box {
+            width: 200px;
+            height: 240px;
+            border-radius: 20px;
+            background: linear-gradient(180deg, rgba(255, 215, 0, 0.08) 0%, rgba(255, 45, 117, 0.05) 100%);
+            border: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: grab;
+            touch-action: none;
+            user-select: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .banana-box:hover {
+            border-color: var(--accent-yellow);
+        }
+
+        .banana-box.active {
+            border-color: var(--accent-pink);
+            box-shadow: 0 0 30px rgba(255, 45, 117, 0.3);
+            cursor: grabbing;
+        }
+
+        .banana {
+            font-size: 6rem;
+            transition: transform 0.1s ease-out;
+            filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.4));
+        }
+
+        .banana-hint {
+            position: absolute;
+            bottom: 12px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .banana-arrow {
+            animation: bounceArrow 1s ease-in-out infinite;
+        }
+
+        @keyframes bounceArrow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* 粒子效果 */
+        .particles-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: particleFly 0.8s ease-out forwards;
+        }
+
+        @keyframes particleFly {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+
+        /* ========== 日历 ========== */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .calendar-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .calendar-nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .calendar-nav button {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .calendar-nav button:hover {
+            background: var(--bg-hover);
+        }
+
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .weekday {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            padding: 8px 0;
+        }
+
+        .days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+
+        .day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            position: relative;
+        }
+
+        .day.current-month {
+            color: var(--text-primary);
+        }
+
+        .day.today {
+            background: rgba(0, 245, 255, 0.15);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        .day.marked {
+            background: rgba(255, 45, 117, 0.2);
+            color: var(--accent-pink);
+            font-weight: 700;
+        }
+
+        .day.marked::after {
+            content: attr(data-count);
+            position: absolute;
+            bottom: 2px;
+            right: 3px;
+            font-size: 0.6rem;
+            background: var(--accent-pink);
+            color: #fff;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* ========== 排行榜 ========== */
+        .leaderboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .board {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .board-title {
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--accent-cyan);
+        }
+
+        .board-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            margin-bottom: 6px;
+        }
+
+        .board-rank {
+            width: 32px;
+            font-weight: 800;
+            color: var(--accent-yellow);
+        }
+
+        .board-name {
+            flex: 1;
+            font-weight: 600;
+        }
+
+        .board-score {
+            font-weight: 800;
+            color: var(--accent-pink);
+        }
+
+        /* ========== 成就系统 ========== */
+        .achievement-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .achievement {
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-dark);
+        }
+
+        .achievement.unlocked {
+            border-color: var(--accent-pink);
+            background: rgba(255, 45, 117, 0.05);
+        }
+
+        .ach-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .ach-name {
+            font-weight: 700;
+        }
+
+        .ach-badge {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: var(--bg-hover);
+        }
+
+        .achievement.unlocked .ach-badge {
+            background: var(--accent-pink);
+            color: #fff;
+        }
+
+        .ach-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .progress-bar-bg {
+            height: 6px;
+            background: var(--bg-hover);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-pink), var(--accent-cyan));
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        /* ========== 对战模块 ========== */
+        .battle-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .battle-actions .input {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .battle-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .battle-tag {
+            padding: 8px 14px;
+            border-radius: 20px;
+            background: var(--bg-hover);
+            font-size: 0.9rem;
+        }
+
+        .battle-tag.code {
+            color: var(--accent-cyan);
+            border: 1px solid var(--accent-cyan);
+        }
+
+        .battle-tag.timer {
+            color: var(--accent-yellow);
+        }
+
+        .battle-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .battle-status {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 16px;
+        }
+
+        .battle-board {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* ========== 成就弹窗 ========== */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 2000;
+        }
+
+        .toast {
+            min-width: 260px;
+            padding: 14px 18px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--accent-pink);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 45, 117, 0.3);
+            animation: toastIn 0.3s ease, toastOut 0.4s ease 2.8s forwards;
+        }
+
+        .toast-title {
+            font-weight: 700;
+            color: var(--accent-yellow);
+            margin-bottom: 4px;
+        }
+
+        .toast-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes toastOut {
+            to { opacity: 0; transform: translateX(50px); }
+        }
+
+        /* ========== 响应式 ========== */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                transform: translateX(calc(-1 * var(--sidebar-width)));
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .mobile-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .main-content {
+                padding: 60px 16px 24px;
+            }
+
+            .home-logo {
+                font-size: 2.2rem;
+            }
+
+            .banana-box {
+                width: 160px;
+                height: 200px;
+            }
+
+            .banana {
+                font-size: 4.5rem;
+            }
+
+            .stats-row {
+                gap: 20px;
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* 遮罩层 */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 90;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar-overlay.active {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 移动端菜单按钮 -->
+    <button class="mobile-toggle" id="mobileToggle" onclick="toggleMobileSidebar()">☰</button>
+    
+    <!-- 遮罩层 -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
+
+    <!-- 侧边栏 -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-logo">撸了么</span>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="收起侧边栏">
+                <span id="toggleIcon">✕</span>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <button class="nav-item active" data-view="home" onclick="setView('home')">
+                <span class="icon">🏠</span>
+                <span>开始撸</span>
+            </button>
+            <button class="nav-item" data-view="leaderboard" onclick="setView('leaderboard')">
+                <span class="icon">🏆</span>
+                <span>撸神榜</span>
+            </button>
+            <button class="nav-item" data-view="achievements" onclick="setView('achievements')">
+                <span class="icon">🎖️</span>
+                <span>成就系统</span>
+            </button>
+            <button class="nav-item" data-view="battle" onclick="setView('battle')">
+                <span class="icon">⚔️</span>
+                <span>御前决斗</span>
+            </button>
+            <button class="nav-item" data-view="settings" onclick="setView('settings')">
+                <span class="icon">⚙️</span>
+                <span>账户设置</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer" id="sidebarFooter">
+            <div class="user-card hidden" id="userCard">
+                <div class="user-avatar">👤</div>
+                <div class="user-info">
+                    <div class="user-name" id="userName">--</div>
+                    <div class="user-streak" id="userStreak">🔥 连续 0 天</div>
+                </div>
+                <button class="logout-btn" onclick="logout()">退出</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <div class="main-container">
+        <div class="main-content">
+            
+            <!-- 登录/注册卡片 -->
+            <div class="auth-card panel" id="authCard">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-mode="login" onclick="setAuthMode('login')">登录</button>
+                    <button class="auth-tab" data-mode="register" onclick="setAuthMode('register')">注册</button>
+                </div>
+                <div class="form-group">
+                    <input class="input" id="usernameInput" placeholder="用户名（至少3个字符）" autocomplete="username">
+                    <input class="input" id="passwordInput" type="password" placeholder="密码（至少6位）" autocomplete="current-password">
+                    <button class="btn primary full" onclick="handleAuth()">开始撸</button>
+                    <div class="hint" id="authHint"></div>
+                </div>
+            </div>
+
+            <!-- 首页视图 -->
+            <div class="view hidden" id="viewHome" data-view="home">
+                <div class="home-header">
+                    <div class="home-logo">撸了么</div>
+                    <div class="home-subtitle">记录每一次的小确幸 ✨</div>
+                </div>
+
+                <div class="status-box">
+                    <div class="status-date" id="statusDate"></div>
+                    <div class="status-text" id="statusText">今天还没撸哦~</div>
+                    <div class="status-count hidden" id="statusCount"></div>
+                    <button class="btn ghost small clear-btn hidden" id="clearBtn" onclick="clearTodayRecord()">清除今日记录</button>
+                </div>
+
+                <div class="banana-container">
+                    <div class="banana-box" id="bananaBox">
+                        <div class="banana" id="banana">🍌</div>
+                        <div class="banana-hint">
+                            <span class="banana-arrow">⬆️⬇️</span>
+                            <span>上下撸一撸</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="calendar-header">
+                        <div class="calendar-title" id="calendarTitle">2024年1月</div>
+                        <div class="calendar-nav">
+                            <button onclick="changeMonth(-1)">◀</button>
+                            <button onclick="changeMonth(1)">▶</button>
+                        </div>
+                    </div>
+                    <div class="weekdays">
+                        <div class="weekday">日</div>
+                        <div class="weekday">一</div>
+                        <div class="weekday">二</div>
+                        <div class="weekday">三</div>
+                        <div class="weekday">四</div>
+                        <div class="weekday">五</div>
+                        <div class="weekday">六</div>
+                    </div>
+                    <div class="days" id="calendarDays"></div>
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <div class="stat-value" id="monthCount">0</div>
+                            <div class="stat-label">本月次数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="totalCount">0</div>
+                            <div class="stat-label">总计次数</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 排行榜视图 -->
+            <div class="view hidden" id="viewLeaderboard" data-view="leaderboard">
+                <div class="panel">
+                    <div class="panel-title">🏆 撸神榜</div>
+                    <div class="panel-desc">看看全服的猛士们</div>
+                    <div class="leaderboard-grid">
+                        <div class="board">
+                            <div class="board-title">总次数榜</div>
+                            <div id="totalBoard"></div>
+                        </div>
+                        <div class="board">
+                            <div class="board-title">本月榜</div>
+                            <div id="monthBoard"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 成就视图 -->
+            <div class="view hidden" id="viewAchievements" data-view="achievements">
+                <div class="panel">
+                    <div class="panel-title">🎖️ 成就系统</div>
+                    <div class="panel-desc">撸得多、连得久，就能解锁徽章</div>
+                    <div class="achievement-list" id="achievementList"></div>
+                </div>
+            </div>
+
+            <!-- 对战视图 -->
+            <div class="view hidden" id="viewBattle" data-view="battle">
+                <div class="panel">
+                    <div class="panel-title">⚔️ 御前决斗 · 60秒</div>
+                    <div class="panel-desc">邀请好友一起撸，计数不入打卡</div>
+                    
+                    <div class="battle-actions">
+                        <button class="btn primary" onclick="createBattle()">🎮 创建房间</button>
+                        <input class="input" id="joinCodeInput" placeholder="输入房间码">
+                        <button class="btn ghost" onclick="joinBattle()">➡️ 加入</button>
+                    </div>
+
+                    <div class="battle-info">
+                        <div class="battle-tag code" id="battleCodeTag">未加入房间</div>
+                        <div class="battle-tag timer" id="battleTimer">未开始</div>
+                    </div>
+
+                    <div class="battle-controls">
+                        <button class="btn primary" id="battleStartBtn" onclick="startBattle()">🚀 开始对战</button>
+                        <button class="btn ghost" onclick="leaveBattle()">离开房间</button>
+                    </div>
+
+                    <div class="battle-status" id="battleStatus">创建或加入房间后即可开始。</div>
+                    <div class="battle-board" id="battleBoard"></div>
+                </div>
+            </div>
+
+            <!-- 设置视图 -->
+            <div class="view hidden" id="viewSettings" data-view="settings">
+                <div class="panel">
+                    <div class="panel-title">⚙️ 账户设置</div>
+                    <div class="panel-desc">修改密码 / 忘记密码重置</div>
+
+                    <div style="margin-bottom: 24px;">
+                        <h4 style="margin-bottom: 12px; color: var(--accent-cyan);">修改密码（需登录）</h4>
+                        <div class="form-group">
+                            <input class="input" id="oldPwdInput" type="password" placeholder="原密码">
+                            <input class="input" id="newPwdInput" type="password" placeholder="新密码（>=6位）">
+                            <button class="btn primary" onclick="changePassword()">修改密码</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 style="margin-bottom: 12px; color: var(--accent-yellow);">忘记密码（无需登录）</h4>
+                        <div class="form-group">
+                            <input class="input" id="resetUserInput" placeholder="用户名">
+                            <input class="input" id="resetPwdInput" type="password" placeholder="新密码（>=6位）">
+                            <button class="btn ghost" onclick="resetPassword()">重置密码</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 粒子容器 -->
+    <div class="particles-container" id="particles"></div>
+
+    <!-- 成就弹窗容器 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // ========== 状态管理 ==========
+        const state = {
+            user: null,
+            summary: null,
+            displayMonth: new Date(),
+            recordsCache: {},
+            leaderboard: null,
+            authMode: 'login',
+            currentView: 'home',
+            battleCode: null,
+            battleState: null,
+            battleIsCreator: false,
+            battleTimer: null,
+        };
+
+        // ========== 工具函数 ==========
+        const el = (id) => document.getElementById(id);
+        const pad = (n) => String(n).padStart(2, '0');
+        const monthKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+        const formatDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+        // ========== API ==========
+        const api = {
+            async request(path, options = {}) {
+                const res = await fetch(path, {
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+                    ...options,
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.message || '请求失败');
+                return data;
+            },
+            login: (u, p) => api.request('/api/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) }),
+            register: (u, p) => api.request('/api/register', { method: 'POST', body: JSON.stringify({ username: u, password: p }) }),
+            logout: () => api.request('/api/logout', { method: 'POST' }),
+            me: () => api.request('/api/me'),
+            record: () => api.request('/api/record', { method: 'POST' }),
+            clearToday: () => api.request('/api/record/today', { method: 'DELETE' }),
+            records: (y, m) => api.request(`/api/records?year=${y}&month=${m}`),
+            leaderboard: () => api.request('/api/leaderboard'),
+            changePassword: (old_p, new_p) => api.request('/api/password/change', { method: 'POST', body: JSON.stringify({ old_password: old_p, new_password: new_p }) }),
+            resetPassword: (u, new_p) => api.request('/api/password/reset', { method: 'POST', body: JSON.stringify({ username: u, new_password: new_p }) }),
+            battleCreate: () => api.request('/api/battle/create', { method: 'POST' }),
+            battleJoin: (code) => api.request('/api/battle/join', { method: 'POST', body: JSON.stringify({ code }) }),
+            battleStart: (code) => api.request('/api/battle/start', { method: 'POST', body: JSON.stringify({ code }) }),
+            battleTap: (code) => api.request('/api/battle/tap', { method: 'POST', body: JSON.stringify({ code }) }),
+            battleState: (code) => api.request(`/api/battle/state?code=${code}`),
+        };
+
+        // ========== 侧边栏 ==========
+        function toggleSidebar() {
+            const sidebar = el('sidebar');
+            sidebar.classList.toggle('collapsed');
+            el('toggleIcon').textContent = sidebar.classList.contains('collapsed') ? '☰' : '✕';
+        }
+
+        function toggleMobileSidebar() {
+            el('sidebar').classList.add('open');
+            el('sidebarOverlay').classList.add('active');
+        }
+
+        function closeMobileSidebar() {
+            el('sidebar').classList.remove('open');
+            el('sidebarOverlay').classList.remove('active');
+        }
+
+        // ========== 视图切换 ==========
+        function setView(view) {
+            state.currentView = view;
+            closeMobileSidebar();
+            
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === view);
+            });
+
+            document.querySelectorAll('.view').forEach(v => {
+                v.classList.add('hidden');
+            });
+
+            const viewEl = el('view' + view.charAt(0).toUpperCase() + view.slice(1));
+            if (viewEl) viewEl.classList.remove('hidden');
+
+            // 刷新对应视图数据
+            if (view === 'leaderboard') loadLeaderboard();
+            if (view === 'achievements') renderAchievements();
+        }
+
+        // ========== 登录/注册 ==========
+        function setAuthMode(mode) {
+            state.authMode = mode;
+            document.querySelectorAll('.auth-tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+        }
+
+        function showAuthCard(show) {
+            el('authCard').classList.toggle('hidden', !show);
+            el('viewHome').classList.toggle('hidden', show);
+            el('userCard').classList.toggle('hidden', show);
+        }
+
+        function setHint(msg, type = 'info') {
+            const hint = el('authHint');
+            hint.textContent = msg;
+            hint.className = `hint ${type}`;
+        }
+
+        async function handleAuth() {
+            const username = el('usernameInput').value.trim();
+            const password = el('passwordInput').value;
+            
+            if (username.length < 3) {
+                setHint('用户名至少3个字符', 'error');
+                return;
+            }
+            if (password.length < 6) {
+                setHint('密码至少6位', 'error');
+                return;
+            }
+
+            try {
+                if (state.authMode === 'login') {
+                    await api.login(username, password);
+                    setHint('登录成功！', 'success');
+                } else {
+                    await api.register(username, password);
+                    setHint('注册成功！', 'success');
+                }
+                await loadUser();
+            } catch (err) {
+                setHint(err.message, 'error');
+            }
+        }
+
+        async function loadUser() {
+            try {
+                const data = await api.me();
+                state.user = data.user;
+                state.summary = data.summary;
+                state.displayMonth = new Date(data.summary.today);
+                state.recordsCache[monthKey(state.displayMonth)] = data.records || {};
+                
+                showAuthCard(false);
+                renderUserCard();
+                refreshUI();
+                await loadLeaderboard();
+            } catch (err) {
+                state.user = null;
+                state.summary = null;
+                showAuthCard(true);
+            }
+        }
+
+        async function logout() {
+            try { await api.logout(); } catch {}
+            state.user = null;
+            state.summary = null;
+            state.recordsCache = {};
+            showAuthCard(true);
+            setHint('已退出登录', 'info');
+        }
+
+        function renderUserCard() {
+            if (!state.user) return;
+            el('userName').textContent = state.user.username;
+            el('userStreak').textContent = `🔥 连续 ${state.summary?.current_streak || 0} 天`;
+        }
+
+        // ========== 香蕉交互 ==========
+        function setupBanana() {
+            const box = el('bananaBox');
+            const banana = el('banana');
+            if (!box || !banana) return;
+
+            let startY = null;
+            let isDragging = false;
+
+            const onStart = (y) => {
+                startY = y;
+                isDragging = true;
+                box.classList.add('active');
+            };
+
+            const onMove = (y) => {
+                if (!isDragging || startY === null) return;
+                const delta = Math.max(-80, Math.min(80, y - startY));
+                banana.style.transform = `translateY(${delta * 0.6}px)`;
+            };
+
+            const onEnd = async (y) => {
+                if (!isDragging || startY === null) return;
+                const delta = y - startY;
+                isDragging = false;
+                startY = null;
+                box.classList.remove('active');
+                banana.style.transform = 'translateY(0)';
+
+                if (Math.abs(delta) > 50) {
+                    await handleStroke();
+                }
+            };
+
+            // Pointer events
+            box.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                box.setPointerCapture(e.pointerId);
+                onStart(e.clientY);
+            });
+
+            box.addEventListener('pointermove', (e) => {
+                onMove(e.clientY);
+            });
+
+            box.addEventListener('pointerup', (e) => {
+                onEnd(e.clientY);
+            });
+
+            box.addEventListener('pointercancel', () => {
+                isDragging = false;
+                startY = null;
+                box.classList.remove('active');
+                banana.style.transform = 'translateY(0)';
+            });
+        }
+
+        async function handleStroke() {
+            // 对战优先
+            if (state.battleState && state.battleState.started && !state.battleState.finished && state.battleCode) {
+                await battleTap();
+                return;
+            }
+            await recordToday();
+        }
+
+        async function recordToday() {
+            if (!state.user) {
+                showAuthCard(true);
+                setHint('请先登录', 'error');
+                return;
+            }
+
+            const prevAch = state.summary?.achievements || [];
+            
+            try {
+                const res = await api.record();
+                state.summary = res.summary;
+                state.recordsCache[monthKey(new Date(res.summary.today))] = res.records || {};
+                
+                createParticles();
+                refreshUI();
+                
+                // 检查新成就
+                const newAch = diffNewAchievements(prevAch, state.summary.achievements || []);
+                showAchievementToasts(newAch);
+                
+                await loadLeaderboard();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function clearTodayRecord() {
+            if (!state.user) return;
+            try {
+                const res = await api.clearToday();
+                state.summary = res.summary;
+                state.recordsCache[monthKey(new Date(res.summary.today))] = res.records || {};
+                refreshUI();
+                await loadLeaderboard();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function diffNewAchievements(prev, next) {
+            const prevSet = new Set(prev.filter(a => a.unlocked).map(a => a.id));
+            return next.filter(a => a.unlocked && !prevSet.has(a.id));
+        }
+
+        // ========== 粒子效果 ==========
+        function createParticles() {
+            const container = el('particles');
+            const box = el('bananaBox');
+            if (!box) return;
+            
+            const rect = box.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            
+            const colors = ['#ff2d75', '#a855f7', '#00f5ff', '#ffd700', '#22c55e'];
+            
+            for (let i = 0; i < 15; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = cx + 'px';
+                particle.style.top = cy + 'px';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                
+                const angle = (Math.PI * 2 * i) / 15;
+                const dist = 80 + Math.random() * 60;
+                particle.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
+                particle.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
+                
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 800);
+            }
+        }
+
+        // ========== 成就弹窗 ==========
+        function showAchievementToasts(list) {
+            if (!list || !list.length) return;
+            const container = el('toastContainer');
+            
+            list.forEach((ach, idx) => {
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.innerHTML = `
+                    <div class="toast-title">🎉 成就解锁: ${ach.name}</div>
+                    <div class="toast-desc">${ach.desc}</div>
+                `;
+                container.appendChild(toast);
+                setTimeout(() => toast.remove(), 3200 + idx * 200);
+            });
+        }
+
+        // ========== 状态更新 ==========
+        function updateStatus() {
+            const today = new Date();
+            el('statusDate').textContent = today.toLocaleDateString('zh-CN', {
+                year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+            });
+
+            if (!state.summary) {
+                el('statusText').textContent = '请先登录~';
+                el('statusText').classList.remove('done');
+                el('statusCount').classList.add('hidden');
+                el('clearBtn').classList.add('hidden');
+                return;
+            }
+
+            const count = state.summary.today_count || 0;
+            const statusText = el('statusText');
+            const statusCount = el('statusCount');
+            const clearBtn = el('clearBtn');
+
+            if (count === 0) {
+                statusText.textContent = '今天还没撸哦~';
+                statusText.classList.remove('done');
+                statusCount.classList.add('hidden');
+                clearBtn.classList.add('hidden');
+            } else {
+                const messages = [
+                    '今天已经撸过啦~ 💪',
+                    '双杀！精力充沛！ 🔥',
+                    '三连击！猛男本男！ ⚡',
+                    '超神！请注意身体！ 💥',
+                    '传说级！你是认真的吗？ 👑'
+                ];
+                statusText.textContent = messages[Math.min(count - 1, 4)];
+                statusText.classList.add('done');
+                statusCount.textContent = `× ${count}`;
+                statusCount.classList.remove('hidden');
+                clearBtn.classList.remove('hidden');
+            }
+        }
+
+        // ========== 日历 ==========
+        async function changeMonth(delta) {
+            state.displayMonth.setMonth(state.displayMonth.getMonth() + delta);
+            await ensureMonthRecords(state.displayMonth);
+            renderCalendar();
+        }
+
+        async function ensureMonthRecords(dateObj) {
+            const key = monthKey(dateObj);
+            if (state.recordsCache[key]) return;
+            try {
+                const res = await api.records(dateObj.getFullYear(), dateObj.getMonth() + 1);
+                state.recordsCache[key] = res.records || {};
+            } catch {
+                state.recordsCache[key] = {};
+            }
+        }
+
+        function renderCalendar() {
+            const year = state.displayMonth.getFullYear();
+            const month = state.displayMonth.getMonth();
+            const key = monthKey(state.displayMonth);
+            const records = state.recordsCache[key] || {};
+
+            el('calendarTitle').textContent = `${year}年${month + 1}月`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+            const todayStr = formatDate(new Date());
+
+            let html = '';
+
+            // 上月
+            for (let i = firstDay - 1; i >= 0; i--) {
+                html += `<div class="day">${daysInPrevMonth - i}</div>`;
+            }
+
+            // 当月
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+                const count = records[dateStr] || 0;
+                const isToday = dateStr === todayStr;
+                const isMarked = count > 0;
+
+                let cls = 'day current-month';
+                if (isToday) cls += ' today';
+                if (isMarked) cls += ' marked';
+
+                html += `<div class="${cls}"${isMarked ? ` data-count="${count}"` : ''}>${d}</div>`;
+            }
+
+            // 下月补齐
+            const total = firstDay + daysInMonth;
+            const remaining = total > 35 ? 42 - total : 35 - total;
+            for (let d = 1; d <= remaining; d++) {
+                html += `<div class="day">${d}</div>`;
+            }
+
+            el('calendarDays').innerHTML = html;
+        }
+
+        function updateStats() {
+            el('monthCount').textContent = state.summary?.month_count || 0;
+            el('totalCount').textContent = state.summary?.total_count || 0;
+        }
+
+        // ========== 排行榜 ==========
+        async function loadLeaderboard() {
+            try {
+                state.leaderboard = await api.leaderboard();
+                renderLeaderboard();
+            } catch {
+                state.leaderboard = null;
+            }
+        }
+
+        function renderLeaderboard() {
+            const renderBoard = (items) => {
+                if (!items || !items.length) return '<div style="color:var(--text-secondary);padding:12px;">暂无数据</div>';
+                return items.map(item => `
+                    <div class="board-item">
+                        <span class="board-rank">#${item.rank}</span>
+                        <span class="board-name">${item.username}</span>
+                        <span class="board-score">${item.total}</span>
+                    </div>
+                `).join('');
+            };
+
+            el('totalBoard').innerHTML = renderBoard(state.leaderboard?.total || []);
+            el('monthBoard').innerHTML = renderBoard(state.leaderboard?.month || []);
+        }
+
+        // ========== 成就 ==========
+        function renderAchievements() {
+            const list = state.summary?.achievements || [];
+            if (!list.length) {
+                el('achievementList').innerHTML = '<div style="color:var(--text-secondary);padding:12px;">登录后查看成就</div>';
+                return;
+            }
+
+            el('achievementList').innerHTML = list.map(ach => {
+                const ratio = Math.min(1, (ach.progress || 0) / ach.target);
+                return `
+                    <div class="achievement ${ach.unlocked ? 'unlocked' : ''}">
+                        <div class="ach-header">
+                            <span class="ach-name">${ach.name}</span>
+                            <span class="ach-badge">${ach.unlocked ? '已解锁' : `${ach.progress}/${ach.target}`}</span>
+                        </div>
+                        <div class="ach-desc">${ach.desc}</div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width:${ratio * 100}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ========== 对战 ==========
+        async function createBattle() {
+            if (!state.user) {
+                alert('请先登录');
+                return;
+            }
+            try {
+                const res = await api.battleCreate();
+                state.battleCode = res.code;
+                state.battleIsCreator = true;
+                state.battleState = res.state;
+                updateBattleUI();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        async function joinBattle() {
+            const code = el('joinCodeInput').value.trim();
+            if (!code) {
+                alert('请输入房间码');
+                return;
+            }
+            try {
+                const res = await api.battleJoin(code);
+                state.battleCode = code;
+                state.battleIsCreator = false;
+                state.battleState = res.state;
+                updateBattleUI();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        async function startBattle() {
+            if (!state.battleCode) return;
+            try {
+                const res = await api.battleStart(state.battleCode);
+                state.battleState = res.state;
+                startBattlePolling();
+                updateBattleUI();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        async function battleTap() {
+            if (!state.battleCode) return;
+            try {
+                const res = await api.battleTap(state.battleCode);
+                state.battleState = res.state;
+                updateBattleUI();
+            } catch {}
+        }
+
+        function leaveBattle() {
+            state.battleCode = null;
+            state.battleState = null;
+            state.battleIsCreator = false;
+            if (state.battleTimer) {
+                clearInterval(state.battleTimer);
+                state.battleTimer = null;
+            }
+            updateBattleUI();
+        }
+
+        function startBattlePolling() {
+            if (state.battleTimer) clearInterval(state.battleTimer);
+            state.battleTimer = setInterval(async () => {
+                if (!state.battleCode) {
+                    clearInterval(state.battleTimer);
+                    return;
+                }
+                try {
+                    const res = await api.battleState(state.battleCode);
+                    state.battleState = res.state;
+                    updateBattleUI();
+                    if (res.state.finished) {
+                        clearInterval(state.battleTimer);
+                    }
+                } catch {
+                    clearInterval(state.battleTimer);
+                }
+            }, 500);
+        }
+
+        function updateBattleUI() {
+            const codeTag = el('battleCodeTag');
+            const timer = el('battleTimer');
+            const status = el('battleStatus');
+            const board = el('battleBoard');
+            const startBtn = el('battleStartBtn');
+
+            if (!state.battleCode || !state.battleState) {
+                codeTag.textContent = '未加入房间';
+                timer.textContent = '未开始';
+                status.textContent = '创建或加入房间后即可开始。';
+                board.innerHTML = '';
+                startBtn.disabled = false;
+                return;
+            }
+
+            const s = state.battleState;
+            codeTag.textContent = `房间: ${state.battleCode}`;
+
+            if (s.finished) {
+                timer.textContent = '已结束';
+                status.textContent = '对战结束！';
+                startBtn.disabled = true;
+            } else if (s.started) {
+                const remaining = Math.max(0, Math.ceil(s.remaining));
+                timer.textContent = `剩余 ${remaining}s`;
+                status.textContent = '对战进行中，疯狂撸动香蕉！';
+                startBtn.disabled = true;
+            } else {
+                timer.textContent = '等待开始';
+                status.textContent = `已有 ${Object.keys(s.players || {}).length} 人加入，房主可开始。`;
+                startBtn.disabled = !state.battleIsCreator;
+            }
+
+            // 渲染实时榜单
+            const players = s.players || {};
+            const sorted = Object.entries(players).sort((a, b) => b[1] - a[1]);
+            board.innerHTML = sorted.map(([name, score], idx) => `
+                <div class="board-item">
+                    <span class="board-rank">#${idx + 1}</span>
+                    <span class="board-name">${name}</span>
+                    <span class="board-score">${score}</span>
+                </div>
+            `).join('');
+        }
+
+        // ========== 设置 ==========
+        async function changePassword() {
+            const oldPwd = el('oldPwdInput').value;
+            const newPwd = el('newPwdInput').value;
+            if (newPwd.length < 6) {
+                alert('新密码至少6位');
+                return;
+            }
+            try {
+                await api.changePassword(oldPwd, newPwd);
+                alert('密码修改成功');
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        async function resetPassword() {
+            const username = el('resetUserInput').value.trim();
+            const newPwd = el('resetPwdInput').value;
+            if (username.length < 3 || newPwd.length < 6) {
+                alert('请输入有效的用户名和密码');
+                return;
+            }
+            try {
+                await api.resetPassword(username, newPwd);
+                alert('密码已重置，请用新密码登录');
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        // ========== 刷新UI ==========
+        function refreshUI() {
+            updateStatus();
+            updateStats();
+            renderCalendar();
+            renderUserCard();
+            renderAchievements();
+        }
+
+        // ========== 初始化 ==========
+        document.addEventListener('DOMContentLoaded', async () => {
+            setupBanana();
+            await loadUser();
+            await ensureMonthRecords(state.displayMonth);
+            renderCalendar();
+        });
+    </script>
+</body>
+</html>
+
+</html>
