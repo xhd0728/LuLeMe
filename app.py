@@ -44,7 +44,7 @@ def _now():
     return datetime.utcnow()
 
 
-def _room_state(room: dict) -> dict:
+def _room_state(room: dict, record_result: bool = True) -> dict:
     started_at = room.get("started_at")
     finished_at = room.get("finished_at")
     remaining = BATTLE_DURATION
@@ -55,6 +55,14 @@ def _room_state(room: dict) -> dict:
         remaining = max(0, BATTLE_DURATION - int(delta))
         if remaining == 0 and not finished_at:
             room["finished_at"] = _now()
+            # Record result when time runs out
+            if record_result:
+                _record_battle_result(room)
+    
+    # If finished and not yet recorded, record now
+    if room.get("finished_at") and not room.get("result_recorded") and record_result:
+        _record_battle_result(room)
+    
     players = sorted(
         room.get("players", {}).values(),
         key=lambda x: x.get("count", 0),
@@ -89,6 +97,91 @@ def _cleanup_rooms():
         BATTLE_ROOMS.pop(code, None)
 
 
+def _record_battle_result(room: dict) -> None:
+    """Record battle result to database and update scores."""
+    if room.get("result_recorded"):
+        return  # Already recorded
+    
+    players = list(room.get("players", {}).values())
+    if len(players) < 2:
+        return
+    
+    # Sort by count to determine winner
+    sorted_players = sorted(players, key=lambda x: x.get("count", 0), reverse=True)
+    p1 = sorted_players[0]
+    p2 = sorted_players[1]
+    
+    # Determine result
+    surrender_result = room.get("surrender_result")
+    winner_id = room.get("winner_id")
+    
+    if surrender_result == "draw":
+        result_type = "draw"
+        winner_id = None
+    elif surrender_result == "surrender":
+        result_type = "surrender"
+        # winner_id already set
+    elif p1.get("count", 0) == p2.get("count", 0):
+        result_type = "draw"
+        winner_id = None
+    else:
+        result_type = "normal"
+        winner_id = p1["user_id"]
+    
+    now = datetime.utcnow().isoformat()
+    
+    with get_db() as conn:
+        # Record battle history
+        conn.execute(
+            """
+            INSERT INTO battle_history 
+            (room_code, player1_id, player1_name, player1_count, 
+             player2_id, player2_name, player2_count, winner_id, result_type, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (room["code"], p1["user_id"], p1["username"], p1.get("count", 0),
+             p2["user_id"], p2["username"], p2.get("count", 0), winner_id, result_type, now)
+        )
+        
+        # Update scores for all players
+        for player in players:
+            pid = player["user_id"]
+            if result_type == "draw":
+                # Draw: +1 point
+                score_delta = 1
+                wins_delta = 0
+                losses_delta = 0
+                draws_delta = 1
+            elif pid == winner_id:
+                # Win: +2 points
+                score_delta = 2
+                wins_delta = 1
+                losses_delta = 0
+                draws_delta = 0
+            else:
+                # Loss: -1 point
+                score_delta = -1
+                wins_delta = 0
+                losses_delta = 1
+                draws_delta = 0
+            
+            conn.execute(
+                """
+                INSERT INTO battle_scores (user_id, score, wins, losses, draws)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(user_id)
+                DO UPDATE SET 
+                    score = score + excluded.score,
+                    wins = wins + excluded.wins,
+                    losses = losses + excluded.losses,
+                    draws = draws + excluded.draws
+                """,
+                (pid, score_delta, wins_delta, losses_delta, draws_delta)
+            )
+    
+    room["result_recorded"] = True
+
+
 def init_db() -> None:
     with get_db() as conn:
         conn.executescript(
@@ -108,6 +201,31 @@ def init_db() -> None:
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 UNIQUE(user_id, date),
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS battle_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                room_code TEXT NOT NULL,
+                player1_id INTEGER NOT NULL,
+                player1_name TEXT NOT NULL,
+                player1_count INTEGER NOT NULL DEFAULT 0,
+                player2_id INTEGER NOT NULL,
+                player2_name TEXT NOT NULL,
+                player2_count INTEGER NOT NULL DEFAULT 0,
+                winner_id INTEGER,
+                result_type TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(player1_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(player2_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS battle_scores (
+                user_id INTEGER PRIMARY KEY,
+                score INTEGER NOT NULL DEFAULT 0,
+                wins INTEGER NOT NULL DEFAULT 0,
+                losses INTEGER NOT NULL DEFAULT 0,
+                draws INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             );
             """
@@ -747,6 +865,151 @@ def battle_rooms():
     return jsonify({"rooms": available_rooms})
 
 
+@app.route("/api/battle/rematch", methods=["POST"])
+def battle_rematch():
+    """Create a new room with the same players for rematch."""
+    user, err = require_login()
+    if err:
+        return err
+    data = request.get_json() or {}
+    old_code = (data.get("code") or "").upper()
+    old_room = BATTLE_ROOMS.get(old_code)
+    
+    if not old_room:
+        return error("原房间不存在", 404)
+    if not old_room.get("finished_at"):
+        return error("对战尚未结束", 400)
+    
+    # Create new room
+    _cleanup_rooms()
+    new_code = _gen_code()
+    
+    # Copy players from old room but reset counts
+    new_players = {}
+    for pid, player in old_room.get("players", {}).items():
+        new_players[pid] = {
+            "user_id": player["user_id"],
+            "username": player["username"],
+            "count": 0,
+            "ready": False
+        }
+    
+    BATTLE_ROOMS[new_code] = {
+        "code": new_code,
+        "creator_id": user["id"],
+        "creator_name": user["username"],
+        "players": new_players,
+        "created_at": _now(),
+        "started_at": None,
+        "finished_at": None,
+    }
+    
+    return jsonify({
+        "message": "已创建新房间",
+        "code": new_code,
+        "state": _room_state(BATTLE_ROOMS[new_code])
+    })
+
+
+@app.route("/api/battle/history")
+def battle_history():
+    """Get battle history with optional pagination."""
+    user, err = require_login()
+    if err:
+        return err
+    
+    limit = min(int(request.args.get("limit", 20)), 100)
+    offset = int(request.args.get("offset", 0))
+    
+    with get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM battle_history
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset)
+        ).fetchall()
+        
+        total = conn.execute("SELECT COUNT(*) FROM battle_history").fetchone()[0]
+    
+    history = []
+    for row in rows:
+        history.append({
+            "id": row["id"],
+            "room_code": row["room_code"],
+            "player1": {"id": row["player1_id"], "name": row["player1_name"], "count": row["player1_count"]},
+            "player2": {"id": row["player2_id"], "name": row["player2_name"], "count": row["player2_count"]},
+            "winner_id": row["winner_id"],
+            "result_type": row["result_type"],
+            "created_at": row["created_at"]
+        })
+    
+    return jsonify({"history": history, "total": total})
+
+
+@app.route("/api/battle/ranking")
+def battle_ranking():
+    """Get battle score ranking."""
+    user, err = require_login()
+    if err:
+        return err
+    
+    with get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT u.id, u.username, 
+                   COALESCE(bs.score, 0) as score,
+                   COALESCE(bs.wins, 0) as wins,
+                   COALESCE(bs.losses, 0) as losses,
+                   COALESCE(bs.draws, 0) as draws
+            FROM users u
+            LEFT JOIN battle_scores bs ON bs.user_id = u.id
+            WHERE bs.score IS NOT NULL OR bs.wins IS NOT NULL
+            ORDER BY COALESCE(bs.score, 0) DESC, COALESCE(bs.wins, 0) DESC
+            LIMIT 20
+            """
+        ).fetchall()
+        
+        # Get current user's stats
+        user_stats = conn.execute(
+            """
+            SELECT COALESCE(score, 0) as score,
+                   COALESCE(wins, 0) as wins,
+                   COALESCE(losses, 0) as losses,
+                   COALESCE(draws, 0) as draws
+            FROM battle_scores
+            WHERE user_id = ?
+            """,
+            (user["id"],)
+        ).fetchone()
+    
+    ranking = []
+    for idx, row in enumerate(rows):
+        ranking.append({
+            "rank": idx + 1,
+            "user_id": row["id"],
+            "username": row["username"],
+            "score": row["score"],
+            "wins": row["wins"],
+            "losses": row["losses"],
+            "draws": row["draws"]
+        })
+    
+    my_stats = None
+    if user_stats:
+        my_stats = {
+            "score": user_stats["score"],
+            "wins": user_stats["wins"],
+            "losses": user_stats["losses"],
+            "draws": user_stats["draws"]
+        }
+    else:
+        my_stats = {"score": 0, "wins": 0, "losses": 0, "draws": 0}
+    
+    return jsonify({"ranking": ranking, "my_stats": my_stats})
+
+
 @app.route("/api/password/change", methods=["POST"])
 def password_change():
     user, err = require_login()
@@ -768,6 +1031,45 @@ def password_change():
             (generate_password_hash(new_password), user["id"]),
         )
     return jsonify({"message": "密码已修改"})
+
+
+@app.route("/api/username/change", methods=["POST"])
+def username_change():
+    user, err = require_login()
+    if err:
+        return err
+    data = request.get_json() or {}
+    new_username = (data.get("new_username") or "").strip()
+    password = data.get("password") or ""
+    
+    if len(new_username) < 3:
+        return error("用户名至少 3 个字符")
+    if len(new_username) > 20:
+        return error("用户名最多 20 个字符")
+    
+    with get_db() as conn:
+        # Verify password
+        db_user = conn.execute(
+            "SELECT password_hash FROM users WHERE id = ?", (user["id"],)
+        ).fetchone()
+        if not db_user or not check_password_hash(db_user["password_hash"], password):
+            return error("密码不正确", 400)
+        
+        # Check if new username is taken
+        existing = conn.execute(
+            "SELECT id FROM users WHERE username = ? AND id != ?",
+            (new_username, user["id"])
+        ).fetchone()
+        if existing:
+            return error("该用户名已被使用", 400)
+        
+        # Update username
+        conn.execute(
+            "UPDATE users SET username = ? WHERE id = ?",
+            (new_username, user["id"]),
+        )
+    
+    return jsonify({"message": "用户名已修改", "new_username": new_username})
 
 
 @app.route("/api/password/reset", methods=["POST"])

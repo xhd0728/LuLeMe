@@ -801,6 +801,88 @@
             gap: 8px;
         }
 
+        .battle-ranking-list,
+        .battle-history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .ranking-item,
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: var(--bg-hover);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .ranking-item .rank {
+            width: 30px;
+            font-weight: bold;
+            color: var(--accent-yellow);
+        }
+
+        .ranking-item .name {
+            flex: 1;
+            margin: 0 12px;
+        }
+
+        .ranking-item .stats {
+            display: flex;
+            gap: 12px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .ranking-item .score {
+            font-weight: bold;
+            color: var(--accent-cyan);
+        }
+
+        .history-item .players {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .history-item .vs {
+            color: var(--accent-pink);
+            font-weight: bold;
+        }
+
+        .history-item .result {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .history-item .result.win {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+
+        .history-item .result.lose {
+            background: rgba(248, 113, 113, 0.2);
+            color: #f87171;
+        }
+
+        .history-item .result.draw {
+            background: rgba(167, 139, 250, 0.2);
+            color: #a78bfa;
+        }
+
+        .history-item .time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
         .room-item {
             display: flex;
             justify-content: space-between;
@@ -1093,7 +1175,27 @@
             <div class="view hidden" id="viewBattle" data-view="battle">
                 <div class="panel">
                     <div class="panel-title">⚔️ 御前决斗 · 60秒</div>
-                    <div class="panel-desc">邀请好友一起撸，计数不入打卡</div>
+                    <div class="panel-desc">邀请好友一起撸，计数不入打卡 | 胜+2分 负-1分 平+1分</div>
+                    
+                    <!-- 我的战绩 -->
+                    <div class="my-battle-stats" id="myBattleStats" style="display: flex; gap: 15px; margin-bottom: 15px; padding: 12px; background: var(--bg-hover); border-radius: 10px;">
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: bold; color: var(--accent-cyan);" id="myBattleScore">0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">积分</div>
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #4ade80;" id="myBattleWins">0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">胜</div>
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #f87171;" id="myBattleLosses">0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">负</div>
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #a78bfa;" id="myBattleDraws">0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">平</div>
+                        </div>
+                    </div>
                     
                     <div class="battle-actions">
                         <button class="btn primary" onclick="createBattle()">🎮 创建房间</button>
@@ -1126,13 +1228,44 @@
                     <div class="battle-status" id="battleStatus">创建或加入房间后即可开始。</div>
                     <div class="battle-board" id="battleBoard"></div>
                 </div>
+
+                <!-- 对战排行榜 -->
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
+                        🏆 对战排行榜
+                        <button class="btn ghost small" onclick="loadBattleRanking()">🔄</button>
+                    </div>
+                    <div id="battleRankingList" class="battle-ranking-list">
+                        <div class="empty-state">加载中...</div>
+                    </div>
+                </div>
+
+                <!-- 对战历史 -->
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
+                        📜 对战历史
+                        <button class="btn ghost small" onclick="loadBattleHistory()">🔄</button>
+                    </div>
+                    <div id="battleHistoryList" class="battle-history-list">
+                        <div class="empty-state">加载中...</div>
+                    </div>
+                </div>
             </div>
 
             <!-- 设置视图 -->
             <div class="view hidden" id="viewSettings" data-view="settings">
                 <div class="panel">
                     <div class="panel-title">⚙️ 账户设置</div>
-                    <div class="panel-desc">修改密码 / 忘记密码重置</div>
+                    <div class="panel-desc">修改用户名 / 修改密码 / 忘记密码重置</div>
+
+                    <div style="margin-bottom: 24px;">
+                        <h4 style="margin-bottom: 12px; color: var(--accent-purple);">修改用户名（需登录）</h4>
+                        <div class="form-group">
+                            <input class="input" id="newUsernameInput" placeholder="新用户名（>=3位）">
+                            <input class="input" id="usernameConfirmPwd" type="password" placeholder="确认密码">
+                            <button class="btn primary" onclick="changeUsername()">修改用户名</button>
+                        </div>
+                    </div>
 
                     <div style="margin-bottom: 24px;">
                         <h4 style="margin-bottom: 12px; color: var(--accent-cyan);">修改密码（需登录）</h4>
@@ -1216,6 +1349,40 @@
             battleReady: (code, ready) => api.request('/api/battle/ready', { method: 'POST', body: JSON.stringify({ code, ready }) }),
             battleLeave: (code) => api.request('/api/battle/leave', { method: 'POST', body: JSON.stringify({ code }) }),
             battleSurrender: (code) => api.request('/api/battle/surrender', { method: 'POST', body: JSON.stringify({ code }) }),
+            battleRematch: (code) => api.request('/api/battle/rematch', { method: 'POST', body: JSON.stringify({ code }) }),
+            battleHistory: (limit = 20, offset = 0) => api.request(`/api/battle/history?limit=${limit}&offset=${offset}`),
+            battleRanking: () => api.request('/api/battle/ranking'),
+            changeUsername: (new_username, password) => api.request('/api/username/change', { method: 'POST', body: JSON.stringify({ new_username, password }) }),
+        };
+
+        // ========== 请求限流 ==========
+        const rateLimiter = {
+            tokens: 10,
+            maxTokens: 10,
+            lastRefill: Date.now(),
+            refillRate: 1000, // 1秒恢复所有
+            
+            canRequest() {
+                this.refill();
+                return this.tokens > 0;
+            },
+            
+            consume() {
+                if (this.tokens > 0) {
+                    this.tokens--;
+                    return true;
+                }
+                return false;
+            },
+            
+            refill() {
+                const now = Date.now();
+                const elapsed = now - this.lastRefill;
+                if (elapsed >= this.refillRate) {
+                    this.tokens = this.maxTokens;
+                    this.lastRefill = now;
+                }
+            }
         };
 
         // ========== 侧边栏 ==========
@@ -1257,6 +1424,8 @@
             if (view === 'battle') {
                 refreshRooms();
                 updateBattleUI();
+                loadBattleRanking();
+                loadBattleHistory();
                 // 如果已经在房间中，启动轮询
                 if (state.battleCode) {
                     startBattlePolling();
@@ -1403,13 +1572,24 @@
         }
 
         async function handleStroke() {
+            // 请求限流检查
+            if (!rateLimiter.canRequest()) {
+                console.log('请求过于频繁，已限流');
+                return;
+            }
+            
             // 对战优先
             if (state.battleState && state.battleState.started && !state.battleState.finished && state.battleCode) {
+                rateLimiter.consume();
                 await battleTap();
                 return;
             }
+            rateLimiter.consume();
             await recordToday();
         }
+
+        // 排行榜刷新计数器，避免每次打卡都刷新
+        let leaderboardRefreshCounter = 0;
 
         async function recordToday() {
             if (!state.user) {
@@ -1432,7 +1612,12 @@
                 const newAch = diffNewAchievements(prevAch, state.summary.achievements || []);
                 showAchievementToasts(newAch);
                 
-                await loadLeaderboard();
+                // 每5次打卡刷新一次排行榜，减少API调用
+                leaderboardRefreshCounter++;
+                if (leaderboardRefreshCounter >= 5) {
+                    leaderboardRefreshCounter = 0;
+                    await loadLeaderboard();
+                }
             } catch (err) {
                 console.error(err);
             }
@@ -2058,7 +2243,11 @@
                 banana.style.transform = 'translateY(0)';
 
                 if (Math.abs(delta) > 50) {
-                    await battleTap();
+                    // 请求限流检查
+                    if (rateLimiter.canRequest()) {
+                        rateLimiter.consume();
+                        await battleTap();
+                    }
                 }
             };
 
@@ -2138,10 +2327,15 @@
             // 先移除之前可能存在的事件监听器，防止重复绑定
             document.removeEventListener('keydown', handleBattleKey);
             
-            // 为香蕉添加点击事件
+            // 为香蕉添加点击事件（带限流）
             const battleBanana = el('battleBanana');
             if (battleBanana) {
-                battleBanana.addEventListener('click', battleTap);
+                battleBanana.addEventListener('click', () => {
+                    if (rateLimiter.canRequest()) {
+                        rateLimiter.consume();
+                        battleTap();
+                    }
+                });
                 // 支持键盘上下箭头
                 document.addEventListener('keydown', handleBattleKey);
             }
@@ -2246,6 +2440,12 @@
                             `;
                         }).join('')}
                     </div>
+                    
+                    <!-- 再来一局按钮 -->
+                    <div style="margin-top: 20px; text-align: center;">
+                        <button class="btn primary" onclick="battleRematch()" style="margin-right: 10px;">🔄 再来一局</button>
+                        <button class="btn ghost" onclick="leaveBattle()">👋 离开房间</button>
+                    </div>
                 </div>
             `;
         }
@@ -2253,7 +2453,11 @@
         function handleBattleKey(e) {
             if (state.currentView === 'battle' && state.battleState?.started && !state.battleState?.finished) {
                 if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                    battleTap();
+                    // 请求限流检查
+                    if (rateLimiter.canRequest()) {
+                        rateLimiter.consume();
+                        battleTap();
+                    }
                 }
             }
         }
@@ -2286,6 +2490,149 @@
                 alert('密码已重置，请用新密码登录');
             } catch (err) {
                 alert(err.message);
+            }
+        }
+
+        async function changeUsername() {
+            const newUsername = el('newUsernameInput').value.trim();
+            const password = el('usernameConfirmPwd').value;
+            if (newUsername.length < 3) {
+                alert('用户名至少3个字符');
+                return;
+            }
+            if (!password) {
+                alert('请输入密码确认');
+                return;
+            }
+            try {
+                const res = await api.changeUsername(newUsername, password);
+                alert('用户名修改成功');
+                // 更新本地状态
+                if (state.user) {
+                    state.user.username = res.new_username;
+                    renderUserCard();
+                }
+                // 清空输入框
+                el('newUsernameInput').value = '';
+                el('usernameConfirmPwd').value = '';
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        // ========== 对战历史和排行榜 ==========
+        async function loadBattleRanking() {
+            try {
+                const res = await api.battleRanking();
+                renderBattleRanking(res.ranking, res.my_stats);
+            } catch (err) {
+                console.error('加载对战排行榜失败:', err);
+            }
+        }
+
+        function renderBattleRanking(ranking, myStats) {
+            // 更新我的战绩
+            if (myStats) {
+                el('myBattleScore').textContent = myStats.score || 0;
+                el('myBattleWins').textContent = myStats.wins || 0;
+                el('myBattleLosses').textContent = myStats.losses || 0;
+                el('myBattleDraws').textContent = myStats.draws || 0;
+            }
+
+            const listEl = el('battleRankingList');
+            if (!ranking || ranking.length === 0) {
+                listEl.innerHTML = '<div class="empty-state">暂无排行数据</div>';
+                return;
+            }
+
+            listEl.innerHTML = ranking.map(item => {
+                const rankEmoji = item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : `#${item.rank}`;
+                return `
+                    <div class="ranking-item">
+                        <span class="rank">${rankEmoji}</span>
+                        <span class="name">${item.username}</span>
+                        <span class="stats">
+                            <span class="score">${item.score}分</span>
+                            <span>${item.wins}胜/${item.losses}负/${item.draws}平</span>
+                        </span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadBattleHistory() {
+            try {
+                const res = await api.battleHistory(20, 0);
+                renderBattleHistory(res.history);
+            } catch (err) {
+                console.error('加载对战历史失败:', err);
+            }
+        }
+
+        function renderBattleHistory(history) {
+            const listEl = el('battleHistoryList');
+            if (!history || history.length === 0) {
+                listEl.innerHTML = '<div class="empty-state">暂无对战记录</div>';
+                return;
+            }
+
+            listEl.innerHTML = history.map(item => {
+                // 判断当前用户的胜负
+                let resultClass = '';
+                let resultText = '';
+                if (item.result_type === 'draw') {
+                    resultClass = 'draw';
+                    resultText = '平局';
+                } else if (state.user && item.winner_id === state.user.id) {
+                    resultClass = 'win';
+                    resultText = '胜利';
+                } else if (state.user && (item.player1.id === state.user.id || item.player2.id === state.user.id)) {
+                    resultClass = 'lose';
+                    resultText = '失败';
+                } else {
+                    // 不是当前用户参与的对战
+                    if (item.winner_id === item.player1.id) {
+                        resultText = `${item.player1.name}胜`;
+                    } else if (item.winner_id === item.player2.id) {
+                        resultText = `${item.player2.name}胜`;
+                    } else {
+                        resultText = '平局';
+                    }
+                }
+
+                const timeStr = new Date(item.created_at).toLocaleString('zh-CN', { 
+                    month: 'numeric', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+
+                return `
+                    <div class="history-item">
+                        <div class="players">
+                            <span>${item.player1.name}(${item.player1.count})</span>
+                            <span class="vs">VS</span>
+                            <span>${item.player2.name}(${item.player2.count})</span>
+                        </div>
+                        <span class="result ${resultClass}">${resultText}</span>
+                        <span class="time">${timeStr}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function battleRematch() {
+            if (!state.battleCode) return;
+            try {
+                const res = await api.battleRematch(state.battleCode);
+                state.battleCode = res.code;
+                state.battleIsCreator = true;
+                state.battleState = res.state;
+                startBattlePolling();
+                updateBattleUI();
+                alert('已创建新房间，等待其他玩家加入');
+            } catch (err) {
+                alert(err.message || '创建再来一局失败');
             }
         }
 
