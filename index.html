@@ -774,6 +774,65 @@
             gap: 8px;
         }
 
+        .battle-rooms {
+            margin: 16px 0;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+
+        .battle-rooms-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+
+        .battle-rooms-header h4 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--accent-cyan);
+        }
+
+        .battle-rooms-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .room-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .room-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .room-code {
+            font-weight: bold;
+            color: var(--accent-cyan);
+        }
+
+        .room-meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 20px;
+            font-style: italic;
+        }
+
         /* ========== 成就弹窗 ========== */
         .toast-container {
             position: fixed;
@@ -1042,13 +1101,25 @@
                         <button class="btn ghost" onclick="joinBattle()">➡️ 加入</button>
                     </div>
 
+                    <!-- 房间列表 -->
+                    <div class="battle-rooms">
+                        <div class="battle-rooms-header">
+                            <h4>可用房间</h4>
+                            <button class="btn ghost small" onclick="refreshRooms()">🔄 刷新</button>
+                        </div>
+                        <div class="battle-rooms-list" id="battleRoomsList">
+                            <div class="empty-state">暂无可用房间</div>
+                        </div>
+                    </div>
+
                     <div class="battle-info">
                         <div class="battle-tag code" id="battleCodeTag">未加入房间</div>
                         <div class="battle-tag timer" id="battleTimer">未开始</div>
                     </div>
 
-                    <div class="battle-controls">
+                    <div class="battle-controls" id="battleControls">
                         <button class="btn primary" id="battleStartBtn" onclick="startBattle()">🚀 开始对战</button>
+                        <button class="btn ghost" id="battleReadyBtn" onclick="toggleReady()">准备</button>
                         <button class="btn ghost" onclick="leaveBattle()">离开房间</button>
                     </div>
 
@@ -1141,6 +1212,10 @@
             battleStart: (code) => api.request('/api/battle/start', { method: 'POST', body: JSON.stringify({ code }) }),
             battleTap: (code) => api.request('/api/battle/tap', { method: 'POST', body: JSON.stringify({ code }) }),
             battleState: (code) => api.request(`/api/battle/state?code=${code}`),
+            battleRooms: () => api.request('/api/battle/rooms'),
+            battleReady: (code, ready) => api.request('/api/battle/ready', { method: 'POST', body: JSON.stringify({ code, ready }) }),
+            battleLeave: (code) => api.request('/api/battle/leave', { method: 'POST', body: JSON.stringify({ code }) }),
+            battleSurrender: (code) => api.request('/api/battle/surrender', { method: 'POST', body: JSON.stringify({ code }) }),
         };
 
         // ========== 侧边栏 ==========
@@ -1179,6 +1254,14 @@
             // 刷新对应视图数据
             if (view === 'leaderboard') loadLeaderboard();
             if (view === 'achievements') renderAchievements();
+            if (view === 'battle') {
+                refreshRooms();
+                updateBattleUI();
+                // 如果已经在房间中，启动轮询
+                if (state.battleCode) {
+                    startBattlePolling();
+                }
+            }
         }
 
         // ========== 登录/注册 ==========
@@ -1589,10 +1672,38 @@
                 state.battleCode = res.code;
                 state.battleIsCreator = true;
                 state.battleState = res.state;
+                startBattlePolling(); // 创建房间后立即开始轮询
                 updateBattleUI();
             } catch (err) {
                 alert(err.message);
             }
+        }
+
+        async function refreshRooms() {
+            if (!state.user) return;
+            try {
+                const res = await api.battleRooms();
+                renderRoomsList(res.rooms);
+            } catch (err) {
+                console.error('刷新房间列表失败:', err);
+            }
+        }
+
+        function renderRoomsList(rooms) {
+            const listEl = el('battleRoomsList');
+            if (!rooms || rooms.length === 0) {
+                listEl.innerHTML = '<div class="empty-state">暂无可用房间</div>';
+                return;
+            }
+            listEl.innerHTML = rooms.map(room => `
+                <div class="room-item">
+                    <div class="room-info">
+                        <div class="room-code">房间 ${room.code}</div>
+                        <div class="room-meta">房主: ${room.creator_name} | ${room.player_count}人已加入</div>
+                    </div>
+                    <button class="btn primary small" onclick="joinBattleByCode('${room.code}')">加入</button>
+                </div>
+            `).join('');
         }
 
         async function joinBattle() {
@@ -1601,10 +1712,34 @@
                 alert('请输入房间码');
                 return;
             }
+            await joinBattleByCode(code);
+        }
+
+        async function joinBattleByCode(code) {
+            if (!state.user) {
+                alert('请先登录');
+                return;
+            }
             try {
                 const res = await api.battleJoin(code);
                 state.battleCode = code;
                 state.battleIsCreator = false;
+                state.battleState = res.state;
+                startBattlePolling(); // 加入房间后开始轮询
+                updateBattleUI();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        async function toggleReady() {
+            if (!state.battleCode || !state.user) return;
+            try {
+                // 获取当前玩家的准备状态
+                const currentPlayer = state.battleState.players.find(p => String(p.user_id) === String(state.user.id));
+                const currentReady = currentPlayer ? currentPlayer.ready : false;
+                const newReady = !currentReady;
+                const res = await api.battleReady(state.battleCode, newReady);
                 state.battleState = res.state;
                 updateBattleUI();
             } catch (err) {
@@ -1620,7 +1755,8 @@
                 startBattlePolling();
                 updateBattleUI();
             } catch (err) {
-                alert(err.message);
+                console.error('Battle start error:', err);
+                alert(err.message || '开始对战失败');
             }
         }
 
@@ -1629,23 +1765,74 @@
             try {
                 const res = await api.battleTap(state.battleCode);
                 state.battleState = res.state;
-                updateBattleUI();
+                // 如果对战进行中，只更新计数，不重新渲染整个DOM
+                if (state.battleState.started && !state.battleState.finished) {
+                    // 确保DOM元素存在后再更新
+                    if (el('battleCount') && el('battleLiveRank')) {
+                        updateBattleCountsOnly();
+                    } else {
+                        // 如果DOM元素不存在，重新渲染整个界面
+                        updateBattleUI();
+                    }
+                } else {
+                    updateBattleUI();
+                }
             } catch {}
         }
 
-        function leaveBattle() {
-            state.battleCode = null;
-            state.battleState = null;
-            state.battleIsCreator = false;
-            if (state.battleTimer) {
-                clearInterval(state.battleTimer);
-                state.battleTimer = null;
+        async function surrenderBattle() {
+            if (!state.battleCode) return;
+            if (!confirm('确定要投降吗？对方将直接获胜！')) return;
+            try {
+                const res = await api.battleSurrender(state.battleCode);
+                state.battleState = res.state;
+                updateBattleUI();
+            } catch (err) {
+                alert(err.message || '投降失败');
             }
-            updateBattleUI();
+        }
+
+        async function leaveBattle() {
+            if (!state.battleCode) return;
+            try {
+                const res = await api.battleLeave(state.battleCode);
+                if (res.room_deleted) {
+                    // 房间已解散
+                    alert('房间已解散');
+                } else if (res.new_creator) {
+                    // 当前用户被设为新房主
+                    alert('房主已离开，你成为了新房主');
+                    state.battleIsCreator = true;
+                    state.battleState = res.state;
+                    updateBattleUI();
+                    return;
+                } else {
+                    // 正常离开
+                    alert('已离开房间');
+                }
+                // 重置状态
+                state.battleCode = null;
+                state.battleState = null;
+                state.battleIsCreator = false;
+                if (state.battleTimer) {
+                    clearInterval(state.battleTimer);
+                    state.battleTimer = null;
+                }
+                // 移除键盘事件监听器
+                document.removeEventListener('keydown', handleBattleKey);
+                updateBattleUI();
+                // 刷新房间列表
+                if (state.currentView === 'battle') {
+                    refreshRooms();
+                }
+            } catch (err) {
+                alert(err.message || '离开房间失败');
+            }
         }
 
         function startBattlePolling() {
             if (state.battleTimer) clearInterval(state.battleTimer);
+            // 根据对战状态使用不同的轮询间隔
             state.battleTimer = setInterval(async () => {
                 if (!state.battleCode) {
                     clearInterval(state.battleTimer);
@@ -1653,15 +1840,83 @@
                 }
                 try {
                     const res = await api.battleState(state.battleCode);
-                    state.battleState = res.state;
-                    updateBattleUI();
-                    if (res.state.finished) {
-                        clearInterval(state.battleTimer);
+                    // 检查是否有重要状态变化
+                    const wasStarted = state.battleState?.started;
+                    const wasFinished = state.battleState?.finished;
+                    const isStarted = res.state.started;
+                    const isFinished = res.state.finished;
+                    
+                    // 只在状态变化时更新UI
+                    if (isStarted && !wasStarted) {
+                        state.battleState = res.state;
+                        updateBattleUI();
+                    } else if (isFinished && !wasFinished) {
+                        state.battleState = res.state;
+                        updateBattleUI();
+                    } else if (isStarted && !isFinished) {
+                        // 对战进行中，只更新次数和排名，不重新渲染整个DOM
+                        state.battleState = res.state;
+                        updateBattleCountsOnly();
+                    } else if (!isStarted && !isFinished) {
+                        // 对战未开始时，也要更新UI以显示新加入的玩家
+                        state.battleState = res.state;
+                        updateBattleUI();
                     }
-                } catch {
-                    clearInterval(state.battleTimer);
+                    
+                    if (isFinished) {
+                        clearInterval(state.battleTimer);
+                        // 移除键盘事件监听器
+                        document.removeEventListener('keydown', handleBattleKey);
+                    }
+                } catch (err) {
+                    console.error('Polling error:', err);
+                    // 如果房间不存在或过期，停止轮询并重置状态
+                    if (err.message && (err.message.includes('房间不存在') || err.message.includes('已过期'))) {
+                        clearInterval(state.battleTimer);
+                        state.battleTimer = null;
+                        state.battleCode = null;
+                        state.battleState = null;
+                        state.battleIsCreator = false;
+                        document.removeEventListener('keydown', handleBattleKey);
+                        updateBattleUI();
+                        alert('房间已不存在或已过期');
+                    }
                 }
-            }, 500);
+            }, 500); // 缩短轮询间隔到500ms，提高响应速度
+        }
+
+        function updateBattleCountsOnly() {
+            if (!state.battleState || !state.battleState.started || state.battleState.finished) return;
+            
+            const players = state.battleState.players;
+            const sorted = [...players].sort((a, b) => (b.count || 0) - (a.count || 0));
+            
+            // 只更新实时排名部分
+            const rankContainer = el('battleLiveRank');
+            const countContainer = el('battleCount');
+            
+            if (rankContainer) {
+                rankContainer.innerHTML = sorted.map((player, idx) => `
+                    <div class="board-item">
+                        <span class="board-rank">#${idx + 1}</span>
+                        <span class="board-name">${player.username}</span>
+                        <span class="board-score">${player.count || 0}次</span>
+                    </div>
+                `).join('');
+            }
+            
+            if (countContainer) {
+                // 确保类型一致，将user_id转为字符串进行比较
+                const currentPlayer = players.find(p => String(p.user_id) === String(state.user.id));
+                countContainer.innerHTML = `你的次数: <strong>${currentPlayer ? currentPlayer.count || 0 : 0}</strong>`;
+            }
+            
+            // 更新倒计时
+            const timer = el('battleTimer');
+            if (timer) {
+                const remaining = Math.max(0, Math.ceil(state.battleState.remaining));
+                timer.textContent = `剩余 ${remaining}s`;
+            }
         }
 
         function updateBattleUI() {
@@ -1670,44 +1925,337 @@
             const status = el('battleStatus');
             const board = el('battleBoard');
             const startBtn = el('battleStartBtn');
+            const readyBtn = el('battleReadyBtn');
+            const battleControls = el('battleControls');
+            const leaveBtn = battleControls?.querySelector('button:last-child');
 
             if (!state.battleCode || !state.battleState) {
                 codeTag.textContent = '未加入房间';
                 timer.textContent = '未开始';
                 status.textContent = '创建或加入房间后即可开始。';
                 board.innerHTML = '';
-                startBtn.disabled = false;
+                // 未加入房间时隐藏整个battle-controls容器
+                if (battleControls) {
+                    battleControls.style.display = 'none';
+                }
                 return;
+            }
+            
+            // 加入房间后显示battle-controls容器
+            if (battleControls) {
+                battleControls.style.display = 'flex';
             }
 
             const s = state.battleState;
             codeTag.textContent = `房间: ${state.battleCode}`;
 
+            // 当前玩家信息
+            const currentPlayer = state.user ? s.players.find(p => String(p.user_id) === String(state.user.id)) : null;
+            const isReady = currentPlayer ? currentPlayer.ready : false;
+
             if (s.finished) {
                 timer.textContent = '已结束';
                 status.textContent = '对战结束！';
                 startBtn.disabled = true;
+                startBtn.style.display = 'none';
+                readyBtn.style.display = 'none';
+                // 对战结束时显示离开按钮
+                if (leaveBtn) {
+                    leaveBtn.style.display = 'inline-block';
+                    leaveBtn.textContent = '离开房间';
+                }
+                renderBattleResult(s.players);
             } else if (s.started) {
                 const remaining = Math.max(0, Math.ceil(s.remaining));
                 timer.textContent = `剩余 ${remaining}s`;
                 status.textContent = '对战进行中，疯狂撸动香蕉！';
                 startBtn.disabled = true;
+                startBtn.style.display = 'none';
+                readyBtn.style.display = 'none';
+                // 对战进行中显示离开按钮
+                if (leaveBtn) {
+                    leaveBtn.style.display = 'inline-block';
+                    leaveBtn.textContent = '离开房间';
+                }
+                renderBattleInProgress(s.players);
             } else {
                 timer.textContent = '等待开始';
-                status.textContent = `已有 ${Object.keys(s.players || {}).length} 人加入，房主可开始。`;
-                startBtn.disabled = !state.battleIsCreator;
+                // 计算已准备玩家数量
+                const readyCount = s.players.filter(p => p.ready).length;
+                const totalCount = s.players.length;
+                status.textContent = `已有 ${totalCount} 人加入，${readyCount} 人已准备，房主可开始。`;
+                
+                // 只有房主可以看到开始按钮
+                startBtn.style.display = state.battleIsCreator ? 'inline-block' : 'none';
+                startBtn.disabled = false; // 房主始终可以点击开始
+                
+                // 显示准备按钮
+                readyBtn.style.display = 'inline-block';
+                readyBtn.textContent = isReady ? '取消准备' : '准备';
+                readyBtn.className = isReady ? 'btn primary' : 'btn ghost';
+                
+                // 根据玩家数量和房主状态更新离开按钮
+                if (leaveBtn) {
+                    leaveBtn.style.display = 'inline-block';
+                    if (state.battleIsCreator && totalCount === 1) {
+                        // 房主是房间的最后一个人，显示解散房间
+                        leaveBtn.textContent = '解散房间';
+                    } else {
+                        // 显示离开房间
+                        leaveBtn.textContent = '离开房间';
+                    }
+                }
+                
+                renderPlayerList(s.players);
             }
+        }
 
-            // 渲染实时榜单
-            const players = s.players || {};
-            const sorted = Object.entries(players).sort((a, b) => b[1] - a[1]);
-            board.innerHTML = sorted.map(([name, score], idx) => `
+        function renderPlayerList(players) {
+            const board = el('battleBoard');
+            const sorted = [...players].sort((a, b) => {
+                // 先按准备状态排序，再按用户名排序
+                if (a.ready !== b.ready) {
+                    return a.ready ? -1 : 1;
+                }
+                return a.username.localeCompare(b.username);
+            });
+            board.innerHTML = sorted.map((player, idx) => `
                 <div class="board-item">
-                    <span class="board-rank">#${idx + 1}</span>
-                    <span class="board-name">${name}</span>
-                    <span class="board-score">${score}</span>
+                    <span class="board-rank">${player.ready ? '✅' : '⏳'}</span>
+                    <span class="board-name">${player.username}</span>
+                    <span class="board-status">${player.ready ? '已准备' : '未准备'}</span>
                 </div>
             `).join('');
+        }
+
+        // 设置对战香蕉交互
+        function setupBattleBanana() {
+            const box = el('battleBananaBox');
+            const banana = el('battleBanana');
+            if (!box || !banana) return;
+
+            let startY = null;
+            let isDragging = false;
+
+            const onStart = (y) => {
+                startY = y;
+                isDragging = true;
+                box.classList.add('active');
+            };
+
+            const onMove = (y) => {
+                if (!isDragging || startY === null) return;
+                const delta = Math.max(-80, Math.min(80, y - startY));
+                banana.style.transform = `translateY(${delta * 0.6}px)`;
+            };
+
+            const onEnd = async (y) => {
+                if (!isDragging || startY === null) return;
+                const delta = y - startY;
+                isDragging = false;
+                startY = null;
+                box.classList.remove('active');
+                banana.style.transform = 'translateY(0)';
+
+                if (Math.abs(delta) > 50) {
+                    await battleTap();
+                }
+            };
+
+            // Pointer events
+            box.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                box.setPointerCapture(e.pointerId);
+                onStart(e.clientY);
+            });
+
+            box.addEventListener('pointermove', (e) => {
+                onMove(e.clientY);
+            });
+
+            box.addEventListener('pointerup', (e) => {
+                onEnd(e.clientY);
+            });
+
+            box.addEventListener('pointercancel', () => {
+                isDragging = false;
+                startY = null;
+                box.classList.remove('active');
+                banana.style.transform = 'translateY(0)';
+            });
+        }
+
+        function renderBattleInProgress(players) {
+            const board = el('battleBoard');
+            const sorted = [...players].sort((a, b) => (b.count || 0) - (a.count || 0));
+            
+            board.innerHTML = `
+                <!-- 对战香蕉区域 -->
+                <div class="battle-banana-container">
+                    <div class="banana-box" id="battleBananaBox" style="margin: 20px auto; text-align: center;">
+                        <div class="banana" id="battleBanana" style="font-size: 60px; cursor: pointer; transition: transform 0.1s ease;">🍌</div>
+                        <div class="banana-hint">
+                            <span class="banana-arrow">⬆️⬇️</span>
+                            <span>疯狂上下撸动！</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 对战控制按钮 -->
+                    <div style="text-align: center; margin: 15px 0;">
+                        <button class="btn ghost" onclick="surrenderBattle()" style="border-color: #ff6b6b; color: #ff6b6b;">🏳️ 投降</button>
+                    </div>
+                    
+                    <!-- 实时计数 -->
+                    <div class="battle-count" id="battleCount" style="text-align: center; font-size: 1.2rem; margin: 10px 0;">
+                        你的次数: <strong>${(() => {
+                            if (!state.user) return 0;
+                            // 先从当前players数组中直接查找，确保获取最新数据
+                            const currentPlayer = players.find(p => String(p.user_id) === String(state.user.id));
+                            if (currentPlayer) return currentPlayer.count || 0;
+                            // 后备方案：从排序后的数组中查找
+                            const sortedPlayer = sorted.find(p => String(p.user_id) === String(state.user.id));
+                            return sortedPlayer ? sortedPlayer.count || 0 : 0;
+                        })()}</strong>
+                    </div>
+                    
+                    <!-- 实时榜单 -->
+                    <div class="battle-live-rank" id="battleLiveRank" style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 10px; color: var(--accent-cyan);">实时排名</h4>
+                        ${sorted.map((player, idx) => `
+                            <div class="board-item">
+                                <span class="board-rank">#${idx + 1}</span>
+                                <span class="board-name">${player.username}</span>
+                                <span class="board-score">${player.count || 0}次</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            // 设置对战香蕉交互
+            setupBattleBanana();
+            
+            // 先移除之前可能存在的事件监听器，防止重复绑定
+            document.removeEventListener('keydown', handleBattleKey);
+            
+            // 为香蕉添加点击事件
+            const battleBanana = el('battleBanana');
+            if (battleBanana) {
+                battleBanana.addEventListener('click', battleTap);
+                // 支持键盘上下箭头
+                document.addEventListener('keydown', handleBattleKey);
+            }
+        }
+
+        function renderBattleResult(players) {
+            const board = el('battleBoard');
+            const sorted = [...players].sort((a, b) => (b.count || 0) - (a.count || 0));
+            
+            // 检查结果类型
+            const surrenderResult = state.battleState?.surrender_result;
+            const winnerId = state.battleState?.winner_id;
+            const surrendered = state.battleState?.surrendered || [];
+            // 将 surrendered 数组中的 ID 统一转为字符串，方便比较
+            const surrenderedStr = surrendered.map(id => String(id));
+            
+            // 判断是否平局（第一名和第二名次数相同）
+            const isDraw = !surrenderResult && sorted.length >= 2 && (sorted[0].count || 0) === (sorted[1].count || 0);
+            
+            // 确定当前用户的角色
+            let isWinner = false;
+            let isSurrendered = false;
+            let resultTitle = '';
+            let resultColor = '';
+            let winner = null;
+            
+            // 先尝试找到 winner，确保不为 null
+            if (winnerId !== null && winnerId !== undefined) {
+                winner = players.find(p => String(p.user_id) === String(winnerId));
+            }
+            // 如果没找到 winner，使用排名第一的玩家
+            if (!winner && sorted.length > 0) {
+                winner = sorted[0];
+            }
+            // 如果还是没有，创建一个默认对象防止错误
+            if (!winner) {
+                winner = { username: '未知', count: 0, user_id: '' };
+            }
+            
+            if (surrenderResult === 'draw') {
+                resultTitle = '🤝 平局！';
+                resultColor = '#a855f7';
+            } else if (surrenderResult === 'surrender') {
+                // 检查当前用户是否在投降列表中（使用字符串比较）
+                isSurrendered = state.user && surrenderedStr.includes(String(state.user.id));
+                isWinner = state.user && String(winner.user_id) === String(state.user.id);
+                
+                if (isSurrendered) {
+                    resultTitle = '🏳️ 你已投降';
+                    resultColor = '#ff6b6b';
+                } else if (isWinner) {
+                    resultTitle = '🎉 对方投降，你获胜！';
+                    resultColor = '#ffd700';
+                } else {
+                    resultTitle = '🎯 对战结束';
+                    resultColor = '#ff6b6b';
+                }
+            } else if (isDraw) {
+                resultTitle = '🤝 平局！';
+                resultColor = '#a855f7';
+            } else {
+                isWinner = state.user && String(winner.user_id) === String(state.user.id);
+                resultTitle = isWinner ? '🎉 胜利！' : '💔 失败';
+                resultColor = isWinner ? '#ffd700' : '#ff6b6b';
+            }
+            
+            board.innerHTML = `
+                <!-- 对战结果 -->
+                <div class="battle-result" style="text-align: center; margin: 20px 0;">
+                    <h3 style="color: ${resultColor}; margin-bottom: 15px;">
+                        ${resultTitle}
+                    </h3>
+                    ${surrenderResult !== 'draw' && !isDraw ? `
+                    <div class="winner-info" style="margin: 15px 0; padding: 15px; background: var(--bg-secondary); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; margin-bottom: 10px;">${isWinner ? '🎉 胜利' : '💔 失败'}</div>
+                        <div style="font-weight: bold;">${winner.username}</div>
+                        <div style="font-size: 2rem; color: var(--accent-yellow); margin: 10px 0;">${winner.count || 0}次</div>
+                    </div>
+                    ` : `
+                    <div class="draw-info" style="margin: 15px 0; padding: 15px; background: var(--bg-secondary); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; margin-bottom: 10px;">🤝 平局</div>
+                        <div style="color: var(--text-secondary);">
+                            ${surrenderResult === 'draw' ? '所有玩家都已投降' : `双方都达到了 ${sorted[0].count || 0} 次`}
+                        </div>
+                    </div>
+                    `}
+                    
+                    <!-- 最终排名 -->
+                    <div class="final-rank" style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 10px; color: var(--accent-cyan);">最终排名</h4>
+                        ${sorted.map((player, idx) => {
+                            const rankDisplay = isDraw && idx < 2 ? '🤝' : 
+                                              idx === 0 ? '🥇' : 
+                                              idx === 1 ? '🥈' : 
+                                              idx === 2 ? '🥉' : `#${idx + 1}`;
+                            return `
+                                <div class="board-item">
+                                    <span class="board-rank">${rankDisplay}</span>
+                                    <span class="board-name">${player.username}</span>
+                                    <span class="board-score">${player.count || 0}次</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function handleBattleKey(e) {
+            if (state.currentView === 'battle' && state.battleState?.started && !state.battleState?.finished) {
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    battleTap();
+                }
+            }
         }
 
         // ========== 设置 ==========

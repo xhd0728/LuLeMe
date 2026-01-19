@@ -68,6 +68,9 @@ def _room_state(room: dict) -> dict:
         "started": started,
         "remaining": remaining,
         "finished": bool(room.get("finished_at")),
+        "surrendered": room.get("surrendered", []),
+        "surrender_result": room.get("surrender_result"),
+        "winner_id": room.get("winner_id"),
     }
 
 
@@ -438,7 +441,7 @@ def me():
     summary, records = build_summary(user["id"])
     return jsonify(
         {
-            "user": {"username": user["username"]},
+            "user": {"id": user["id"], "username": user["username"]},
             "summary": summary,
             "records": records,
         }
@@ -525,7 +528,7 @@ def battle_create():
         "creator_id": user["id"],
         "creator_name": user["username"],
         "players": {
-            user["id"]: {"user_id": user["id"], "username": user["username"], "count": 0}
+            user["id"]: {"user_id": user["id"], "username": user["username"], "count": 0, "ready": False}
         },
         "created_at": _now(),
         "started_at": None,
@@ -547,8 +550,69 @@ def battle_join():
     if room.get("finished_at"):
         return error("房间已结束", 400)
     players = room.setdefault("players", {})
-    players[user["id"]] = {"user_id": user["id"], "username": user["username"], "count": 0}
+    players[user["id"]] = {
+        "user_id": user["id"], 
+        "username": user["username"], 
+        "count": 0,
+        "ready": False
+    }
     return jsonify({"message": "已加入", "state": _room_state(room)})
+
+
+@app.route("/api/battle/ready", methods=["POST"])
+def battle_ready():
+    user, err = require_login()
+    if err:
+        return err
+    data = request.get_json() or {}
+    code = (data.get("code") or "").upper()
+    ready = data.get("ready", False)
+    room = BATTLE_ROOMS.get(code)
+    if not room:
+        return error("房间不存在或已过期", 404)
+    if room.get("finished_at"):
+        return error("房间已结束", 400)
+    if room.get("started_at"):
+        return error("对战已开始", 400)
+    players = room.setdefault("players", {})
+    if user["id"] not in players:
+        return error("你不在该房间中", 400)
+    players[user["id"]]["ready"] = ready
+    return jsonify({"message": "准备状态已更新", "state": _room_state(room)})
+
+
+@app.route("/api/battle/leave", methods=["POST"])
+def battle_leave():
+    user, err = require_login()
+    if err:
+        return err
+    data = request.get_json() or {}
+    code = (data.get("code") or "").upper()
+    room = BATTLE_ROOMS.get(code)
+    if not room:
+        return error("房间不存在或已过期", 404)
+    players = room.setdefault("players", {})
+    if user["id"] not in players:
+        return error("你不在该房间中", 400)
+    
+    is_creator = room["creator_id"] == user["id"]
+    del players[user["id"]]
+    
+    # 如果房间还有其他玩家且当前用户是房主，转让房主
+    if len(players) > 0 and is_creator:
+        # 选择第一个加入的玩家作为新房主
+        new_creator_id = list(players.keys())[0]
+        new_creator = players[new_creator_id]
+        room["creator_id"] = new_creator_id
+        room["creator_name"] = new_creator["username"]
+        return jsonify({"message": "已离开房间，房主已转让", "state": _room_state(room), "new_creator": True})
+    
+    # 如果房间没有其他玩家，删除房间
+    if len(players) == 0:
+        del BATTLE_ROOMS[code]
+        return jsonify({"message": "房间已解散", "room_deleted": True})
+    
+    return jsonify({"message": "已离开房间", "state": _room_state(room)})
 
 
 @app.route("/api/battle/start", methods=["POST"])
@@ -567,8 +631,10 @@ def battle_start():
         return error("房间已结束", 400)
     if room.get("started_at"):
         return jsonify({"message": "已开始", "state": _room_state(room)})
-    if len(room.get("players", {})) < 2:
+    players = room.get("players", {})
+    if len(players) < 2:
         return error("至少 2 人才能开始", 400)
+    # 开始对战，设置所有玩家的状态
     room["started_at"] = _now()
     room["finished_at"] = None
     return jsonify({"message": "对战开始！", "state": _room_state(room)})
@@ -607,6 +673,78 @@ def battle_state():
     if not room:
         return error("房间不存在或已过期", 404)
     return jsonify({"state": _room_state(room)})
+
+
+@app.route("/api/battle/surrender", methods=["POST"])
+def battle_surrender():
+    user, err = require_login()
+    if err:
+        return err
+    data = request.get_json() or {}
+    code = (data.get("code") or "").upper()
+    room = BATTLE_ROOMS.get(code)
+    if not room:
+        return error("房间不存在或已过期", 404)
+    
+    state = _room_state(room)
+    if not state["started"]:
+        return error("对战未开始", 400)
+    if state["finished"]:
+        return error("对战已结束", 400)
+    
+    # 检查用户是否在房间中（state["players"]是数组，需要查找user_id）
+    player_in_room = any(p["user_id"] == user["id"] for p in state["players"])
+    if not player_in_room:
+        return error("你不在房间中", 400)
+    
+    # 记录投降者
+    room.setdefault("surrendered", [])
+    if user["id"] not in room["surrendered"]:
+        room["surrendered"].append(user["id"])
+    
+    # 检查是否所有玩家都投降了（平局）
+    players = room.get("players", {})
+    if len(room["surrendered"]) >= len(players):
+        room["finished_at"] = _now()
+        room["surrender_result"] = "draw"
+        return jsonify({"message": "所有玩家都已投降，平局！", "state": _room_state(room)})
+    
+    # 找到未投降的玩家作为获胜者
+    winner_id = None
+    for player_id in players:
+        if player_id not in room["surrendered"]:
+            winner_id = player_id
+            break
+    
+    if winner_id:
+        room["finished_at"] = _now()
+        room["surrender_result"] = "surrender"
+        room["winner_id"] = winner_id
+        return jsonify({"message": "已投降", "state": _room_state(room)})
+    
+    return jsonify({"message": "已记录", "state": _room_state(room)})
+
+
+@app.route("/api/battle/rooms")
+def battle_rooms():
+    user, err = require_login()
+    if err:
+        return err
+    _cleanup_rooms()
+    # 返回所有未开始的房间
+    available_rooms = []
+    for room in BATTLE_ROOMS.values():
+        if not room.get("started_at") and not room.get("finished_at"):
+            state = _room_state(room)
+            available_rooms.append({
+                "code": state["code"],
+                "creator_name": state["creator_name"],
+                "player_count": len(state["players"]),
+                "created_at": room["created_at"].isoformat()
+            })
+    # 按创建时间倒序排列
+    available_rooms.sort(key=lambda x: x["created_at"], reverse=True)
+    return jsonify({"rooms": available_rooms})
 
 
 @app.route("/api/password/change", methods=["POST"])
@@ -702,4 +840,4 @@ def not_found(_):
 init_db()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True)
