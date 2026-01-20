@@ -15,19 +15,22 @@
         }
 
         :root {
-            --bg-dark: #0d0d0d;
-            --bg-sidebar: #171717;
-            --bg-card: #1e1e1e;
-            --bg-hover: #2a2a2a;
+            --bg-dark: #050505;
+            --bg-sidebar: #0f0f10;
+            --bg-card: rgba(30, 30, 35, 0.6);
+            --bg-hover: rgba(255, 255, 255, 0.08);
             --accent-pink: #ff2d75;
             --accent-cyan: #00f5ff;
-            --accent-purple: #a855f7;
+            --accent-purple: #bd00ff;
             --accent-yellow: #ffd700;
-            --text-primary: #ececec;
-            --text-secondary: #8e8e8e;
-            --border-color: #2f2f2f;
+            --text-primary: #f0f0f0;
+            --text-secondary: #a0a0a0;
+            --border-color: rgba(255, 255, 255, 0.1);
             --sidebar-width: 260px;
             --sidebar-collapsed: 0px;
+            --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            --glow-pink: 0 0 15px rgba(255, 45, 117, 0.5);
+            --glow-cyan: 0 0 15px rgba(0, 245, 255, 0.5);
         }
 
         html, body {
@@ -36,7 +39,10 @@
 
         body {
             font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-dark);
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(189, 0, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(0, 245, 255, 0.05) 0%, transparent 40%);
             color: var(--text-primary);
             display: flex;
             overflow: hidden;
@@ -44,16 +50,34 @@
 
         .hidden { display: none !important; }
 
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
         /* ========== 侧边栏 ========== */
         .sidebar {
             width: var(--sidebar-width);
             height: 100vh;
-            background: var(--bg-sidebar);
+            background: rgba(15, 15, 16, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
-            transition: width 0.25s ease, transform 0.25s ease;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 100;
         }
 
@@ -107,59 +131,83 @@
 
         .nav-item {
             width: 100%;
-            padding: 12px 14px;
-            margin-bottom: 4px;
-            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 6px;
+            border-radius: 12px;
             border: none;
             background: transparent;
-            color: var(--text-primary);
+            color: var(--text-secondary);
             font-size: 0.95rem;
             display: flex;
             align-items: center;
             gap: 12px;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.2s ease;
             text-align: left;
+            position: relative;
         }
 
         .nav-item:hover {
             background: var(--bg-hover);
+            color: var(--text-primary);
         }
 
         .nav-item.active {
-            background: var(--bg-hover);
+            background: rgba(0, 245, 255, 0.1);
             color: var(--accent-cyan);
+            font-weight: 600;
+        }
+        
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 20px;
+            background: var(--accent-cyan);
+            border-radius: 0 4px 4px 0;
+            box-shadow: var(--glow-cyan);
         }
 
         .nav-item .icon {
-            font-size: 1.15rem;
+            font-size: 1.2rem;
             width: 24px;
             text-align: center;
         }
 
         .sidebar-footer {
-            padding: 12px;
+            padding: 16px;
             border-top: 1px solid var(--border-color);
         }
 
         .user-card {
-            padding: 10px 12px;
-            border-radius: 10px;
+            padding: 12px;
+            border-radius: 12px;
             background: var(--bg-hover);
+            border: 1px solid var(--border-color);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+        
+        .user-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .user-avatar {
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
+            font-size: 1.4rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
         .user-info {
@@ -234,59 +282,82 @@
         /* ========== 通用组件 ========== */
         .panel {
             background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 20px;
+            border-radius: 20px;
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-card);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .panel:hover {
+            border-color: rgba(255, 255, 255, 0.15);
         }
 
         .panel-title {
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             font-weight: 700;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
         }
 
         .panel-desc {
             color: var(--text-secondary);
-            font-size: 0.9rem;
-            margin-bottom: 16px;
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            line-height: 1.5;
         }
 
         .input {
             width: 100%;
-            padding: 12px 14px;
-            border-radius: 10px;
+            padding: 14px 16px;
+            border-radius: 12px;
             border: 1px solid var(--border-color);
-            background: var(--bg-dark);
+            background: rgba(0, 0, 0, 0.3);
             color: var(--text-primary);
-            font-size: 0.95rem;
+            font-size: 1rem;
             outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            transition: all 0.2s;
         }
 
         .input:focus {
             border-color: var(--accent-cyan);
-            box-shadow: 0 0 0 3px rgba(0, 245, 255, 0.1);
+            background: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 0 3px rgba(0, 245, 255, 0.15);
         }
 
         .btn {
-            padding: 12px 20px;
-            border-radius: 10px;
+            padding: 14px 24px;
+            border-radius: 12px;
             border: none;
-            font-size: 0.95rem;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .btn.primary {
             background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
             color: #fff;
+            box-shadow: 0 4px 15px rgba(189, 0, 255, 0.3);
         }
 
         .btn.primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 8px 25px rgba(255, 45, 117, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(189, 0, 255, 0.4);
+            filter: brightness(1.1);
+        }
+        
+        .btn.primary:active {
+            transform: translateY(0);
         }
 
         .btn.ghost {
@@ -296,9 +367,13 @@
         }
 
         .btn.ghost:hover {
-            background: var(--bg-hover);
-            border-color: var(--accent-cyan);
-            color: var(--accent-cyan);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--text-primary);
+            color: #fff;
+        }
+
+        .btn.ghost:active {
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .btn.full { width: 100%; }
@@ -350,59 +425,77 @@
         }
 
         /* ========== 首页视图 ========== */
+        .view {
+            animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .home-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
 
         .home-logo {
             font-family: 'ZCOOL KuaiLe', cursive;
-            font-size: 3rem;
-            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple), var(--accent-cyan));
+            font-size: 3.5rem;
+            background: linear-gradient(135deg, #fff 0%, var(--accent-pink) 50%, var(--accent-cyan) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
+            filter: drop-shadow(0 0 15px rgba(255, 45, 117, 0.4));
         }
 
         .home-subtitle {
             color: var(--text-secondary);
-            font-size: 1rem;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
         }
 
         .status-box {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .status-date {
             color: var(--accent-cyan);
             font-size: 1rem;
             margin-bottom: 8px;
+            font-weight: 600;
         }
 
         .status-text {
-            font-size: 1.4rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: var(--text-secondary);
         }
 
         .status-text.done {
             color: var(--accent-pink);
+            text-shadow: 0 0 10px rgba(255, 45, 117, 0.3);
         }
 
         .status-count {
-            font-size: 2.5rem;
+            font-size: 3rem;
             font-weight: 800;
             background: linear-gradient(135deg, var(--accent-pink), var(--accent-yellow));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-top: 8px;
+            margin-top: 12px;
+            filter: drop-shadow(0 0 10px rgba(255, 45, 117, 0.3));
         }
 
         .clear-btn {
-            margin-top: 12px;
+            margin-top: 16px;
         }
 
         /* ========== 香蕉交互区 ========== */
@@ -410,15 +503,16 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 40px;
+            margin-bottom: 50px;
         }
 
         .banana-box {
-            width: 200px;
-            height: 240px;
-            border-radius: 20px;
-            background: linear-gradient(180deg, rgba(255, 215, 0, 0.08) 0%, rgba(255, 45, 117, 0.05) 100%);
-            border: 2px solid var(--border-color);
+            width: 220px;
+            height: 280px;
+            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(255, 215, 0, 0.05) 0%, rgba(255, 45, 117, 0.05) 100%);
+            backdrop-filter: blur(5px);
+            border: 2px solid rgba(255, 215, 0, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -426,17 +520,20 @@
             cursor: grab;
             touch-action: none;
             user-select: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
         }
 
         .banana-box:hover {
             border-color: var(--accent-yellow);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
         }
 
         .banana-box.active {
             border-color: var(--accent-pink);
-            box-shadow: 0 0 30px rgba(255, 45, 117, 0.3);
+            box-shadow: 0 0 40px rgba(255, 45, 117, 0.4);
             cursor: grabbing;
+            transform: scale(0.98);
         }
 
         .banana {
@@ -774,6 +871,147 @@
             gap: 8px;
         }
 
+        .battle-rooms {
+            margin: 16px 0;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+
+        .battle-rooms-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+
+        .battle-rooms-header h4 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--accent-cyan);
+        }
+
+        .battle-rooms-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .battle-ranking-list,
+        .battle-history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .ranking-item,
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: var(--bg-hover);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .ranking-item .rank {
+            width: 30px;
+            font-weight: bold;
+            color: var(--accent-yellow);
+        }
+
+        .ranking-item .name {
+            flex: 1;
+            margin: 0 12px;
+        }
+
+        .ranking-item .stats {
+            display: flex;
+            gap: 12px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .ranking-item .score {
+            font-weight: bold;
+            color: var(--accent-cyan);
+        }
+
+        .history-item .players {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .history-item .vs {
+            color: var(--accent-pink);
+            font-weight: bold;
+        }
+
+        .history-item .result {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .history-item .result.win {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+
+        .history-item .result.lose {
+            background: rgba(248, 113, 113, 0.2);
+            color: #f87171;
+        }
+
+        .history-item .result.draw {
+            background: rgba(167, 139, 250, 0.2);
+            color: #a78bfa;
+        }
+
+        .history-item .time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .room-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .room-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .room-code {
+            font-weight: bold;
+            color: var(--accent-cyan);
+        }
+
+        .room-meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 20px;
+            font-style: italic;
+        }
+
         /* ========== 成就弹窗 ========== */
         .toast-container {
             position: fixed;
@@ -1034,7 +1272,27 @@
             <div class="view hidden" id="viewBattle" data-view="battle">
                 <div class="panel">
                     <div class="panel-title">⚔️ 御前决斗 · 60秒</div>
-                    <div class="panel-desc">邀请好友一起撸，计数不入打卡</div>
+                    <div class="panel-desc">邀请好友一起撸，计数不入打卡 | 胜+2分 负-1分 平+1分</div>
+                    
+                    <!-- 我的战绩 -->
+                    <div class="my-battle-stats" id="myBattleStats" style="display: flex; gap: 15px; margin-bottom: 15px; padding: 12px; background: var(--bg-hover); border-radius: 10px;">
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: bold; color: var(--accent-cyan);" id="myBattleScore">0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">积分</div>
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #4ade80;" id="myBattleWins">0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">胜</div>
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #f87171;" id="myBattleLosses">0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">负</div>
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: bold; color: #a78bfa;" id="myBattleDraws">0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">平</div>
+                        </div>
+                    </div>
                     
                     <div class="battle-actions">
                         <button class="btn primary" onclick="createBattle()">🎮 创建房间</button>
@@ -1042,18 +1300,52 @@
                         <button class="btn ghost" onclick="joinBattle()">➡️ 加入</button>
                     </div>
 
+                    <!-- 房间列表 -->
+                    <div class="battle-rooms">
+                        <div class="battle-rooms-header">
+                            <h4>可用房间</h4>
+                            <button class="btn ghost small" onclick="refreshRooms()">🔄 刷新</button>
+                        </div>
+                        <div class="battle-rooms-list" id="battleRoomsList">
+                            <div class="empty-state">暂无可用房间</div>
+                        </div>
+                    </div>
+
                     <div class="battle-info">
                         <div class="battle-tag code" id="battleCodeTag">未加入房间</div>
                         <div class="battle-tag timer" id="battleTimer">未开始</div>
                     </div>
 
-                    <div class="battle-controls">
+                    <div class="battle-controls" id="battleControls">
                         <button class="btn primary" id="battleStartBtn" onclick="startBattle()">🚀 开始对战</button>
+                        <button class="btn ghost" id="battleReadyBtn" onclick="toggleReady()">准备</button>
                         <button class="btn ghost" onclick="leaveBattle()">离开房间</button>
                     </div>
 
                     <div class="battle-status" id="battleStatus">创建或加入房间后即可开始。</div>
                     <div class="battle-board" id="battleBoard"></div>
+                </div>
+
+                <!-- 对战排行榜 -->
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
+                        🏆 对战排行榜
+                        <button class="btn ghost small" onclick="loadBattleRanking()">🔄</button>
+                    </div>
+                    <div id="battleRankingList" class="battle-ranking-list">
+                        <div class="empty-state">加载中...</div>
+                    </div>
+                </div>
+
+                <!-- 对战历史 -->
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
+                        📜 对战历史
+                        <button class="btn ghost small" onclick="loadBattleHistory()">🔄</button>
+                    </div>
+                    <div id="battleHistoryList" class="battle-history-list">
+                        <div class="empty-state">加载中...</div>
+                    </div>
                 </div>
             </div>
 
@@ -1061,7 +1353,16 @@
             <div class="view hidden" id="viewSettings" data-view="settings">
                 <div class="panel">
                     <div class="panel-title">⚙️ 账户设置</div>
-                    <div class="panel-desc">修改密码 / 忘记密码重置</div>
+                    <div class="panel-desc">修改用户名 / 修改密码 / 忘记密码重置</div>
+
+                    <div style="margin-bottom: 24px;">
+                        <h4 style="margin-bottom: 12px; color: var(--accent-purple);">修改用户名（需登录）</h4>
+                        <div class="form-group">
+                            <input class="input" id="newUsernameInput" placeholder="新用户名（>=3位）">
+                            <input class="input" id="usernameConfirmPwd" type="password" placeholder="确认密码">
+                            <button class="btn primary" onclick="changeUsername()">修改用户名</button>
+                        </div>
+                    </div>
 
                     <div style="margin-bottom: 24px;">
                         <h4 style="margin-bottom: 12px; color: var(--accent-cyan);">修改密码（需登录）</h4>
@@ -1141,6 +1442,44 @@
             battleStart: (code) => api.request('/api/battle/start', { method: 'POST', body: JSON.stringify({ code }) }),
             battleTap: (code) => api.request('/api/battle/tap', { method: 'POST', body: JSON.stringify({ code }) }),
             battleState: (code) => api.request(`/api/battle/state?code=${code}`),
+            battleRooms: () => api.request('/api/battle/rooms'),
+            battleReady: (code, ready) => api.request('/api/battle/ready', { method: 'POST', body: JSON.stringify({ code, ready }) }),
+            battleLeave: (code) => api.request('/api/battle/leave', { method: 'POST', body: JSON.stringify({ code }) }),
+            battleSurrender: (code) => api.request('/api/battle/surrender', { method: 'POST', body: JSON.stringify({ code }) }),
+            battleRematch: (code) => api.request('/api/battle/rematch', { method: 'POST', body: JSON.stringify({ code }) }),
+            battleHistory: (limit = 20, offset = 0) => api.request(`/api/battle/history?limit=${limit}&offset=${offset}`),
+            battleRanking: () => api.request('/api/battle/ranking'),
+            changeUsername: (new_username, password) => api.request('/api/username/change', { method: 'POST', body: JSON.stringify({ new_username, password }) }),
+        };
+
+        // ========== 请求限流 ==========
+        const rateLimiter = {
+            tokens: 10,
+            maxTokens: 10,
+            lastRefill: Date.now(),
+            refillRate: 1000, // 1秒恢复所有
+            
+            canRequest() {
+                this.refill();
+                return this.tokens > 0;
+            },
+            
+            consume() {
+                if (this.tokens > 0) {
+                    this.tokens--;
+                    return true;
+                }
+                return false;
+            },
+            
+            refill() {
+                const now = Date.now();
+                const elapsed = now - this.lastRefill;
+                if (elapsed >= this.refillRate) {
+                    this.tokens = this.maxTokens;
+                    this.lastRefill = now;
+                }
+            }
         };
 
         // ========== 侧边栏 ==========
@@ -1179,6 +1518,16 @@
             // 刷新对应视图数据
             if (view === 'leaderboard') loadLeaderboard();
             if (view === 'achievements') renderAchievements();
+            if (view === 'battle') {
+                refreshRooms();
+                updateBattleUI();
+                loadBattleRanking();
+                loadBattleHistory();
+                // 如果已经在房间中，启动轮询
+                if (state.battleCode) {
+                    startBattlePolling();
+                }
+            }
         }
 
         // ========== 登录/注册 ==========
@@ -1320,13 +1669,24 @@
         }
 
         async function handleStroke() {
+            // 请求限流检查
+            if (!rateLimiter.canRequest()) {
+                console.log('请求过于频繁，已限流');
+                return;
+            }
+            
             // 对战优先
             if (state.battleState && state.battleState.started && !state.battleState.finished && state.battleCode) {
+                rateLimiter.consume();
                 await battleTap();
                 return;
             }
+            rateLimiter.consume();
             await recordToday();
         }
+
+        // 排行榜刷新计数器，避免每次打卡都刷新
+        let leaderboardRefreshCounter = 0;
 
         async function recordToday() {
             if (!state.user) {
@@ -1349,7 +1709,12 @@
                 const newAch = diffNewAchievements(prevAch, state.summary.achievements || []);
                 showAchievementToasts(newAch);
                 
-                await loadLeaderboard();
+                // 每5次打卡刷新一次排行榜，减少API调用
+                leaderboardRefreshCounter++;
+                if (leaderboardRefreshCounter >= 5) {
+                    leaderboardRefreshCounter = 0;
+                    await loadLeaderboard();
+                }
             } catch (err) {
                 console.error(err);
             }
@@ -1589,10 +1954,38 @@
                 state.battleCode = res.code;
                 state.battleIsCreator = true;
                 state.battleState = res.state;
+                startBattlePolling(); // 创建房间后立即开始轮询
                 updateBattleUI();
             } catch (err) {
                 alert(err.message);
             }
+        }
+
+        async function refreshRooms() {
+            if (!state.user) return;
+            try {
+                const res = await api.battleRooms();
+                renderRoomsList(res.rooms);
+            } catch (err) {
+                console.error('刷新房间列表失败:', err);
+            }
+        }
+
+        function renderRoomsList(rooms) {
+            const listEl = el('battleRoomsList');
+            if (!rooms || rooms.length === 0) {
+                listEl.innerHTML = '<div class="empty-state">暂无可用房间</div>';
+                return;
+            }
+            listEl.innerHTML = rooms.map(room => `
+                <div class="room-item">
+                    <div class="room-info">
+                        <div class="room-code">房间 ${room.code}</div>
+                        <div class="room-meta">房主: ${room.creator_name} | ${room.player_count}人已加入</div>
+                    </div>
+                    <button class="btn primary small" onclick="joinBattleByCode('${room.code}')">加入</button>
+                </div>
+            `).join('');
         }
 
         async function joinBattle() {
@@ -1601,10 +1994,34 @@
                 alert('请输入房间码');
                 return;
             }
+            await joinBattleByCode(code);
+        }
+
+        async function joinBattleByCode(code) {
+            if (!state.user) {
+                alert('请先登录');
+                return;
+            }
             try {
                 const res = await api.battleJoin(code);
                 state.battleCode = code;
                 state.battleIsCreator = false;
+                state.battleState = res.state;
+                startBattlePolling(); // 加入房间后开始轮询
+                updateBattleUI();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        async function toggleReady() {
+            if (!state.battleCode || !state.user) return;
+            try {
+                // 获取当前玩家的准备状态
+                const currentPlayer = state.battleState.players.find(p => String(p.user_id) === String(state.user.id));
+                const currentReady = currentPlayer ? currentPlayer.ready : false;
+                const newReady = !currentReady;
+                const res = await api.battleReady(state.battleCode, newReady);
                 state.battleState = res.state;
                 updateBattleUI();
             } catch (err) {
@@ -1620,7 +2037,8 @@
                 startBattlePolling();
                 updateBattleUI();
             } catch (err) {
-                alert(err.message);
+                console.error('Battle start error:', err);
+                alert(err.message || '开始对战失败');
             }
         }
 
@@ -1629,23 +2047,74 @@
             try {
                 const res = await api.battleTap(state.battleCode);
                 state.battleState = res.state;
-                updateBattleUI();
+                // 如果对战进行中，只更新计数，不重新渲染整个DOM
+                if (state.battleState.started && !state.battleState.finished) {
+                    // 确保DOM元素存在后再更新
+                    if (el('battleCount') && el('battleLiveRank')) {
+                        updateBattleCountsOnly();
+                    } else {
+                        // 如果DOM元素不存在，重新渲染整个界面
+                        updateBattleUI();
+                    }
+                } else {
+                    updateBattleUI();
+                }
             } catch {}
         }
 
-        function leaveBattle() {
-            state.battleCode = null;
-            state.battleState = null;
-            state.battleIsCreator = false;
-            if (state.battleTimer) {
-                clearInterval(state.battleTimer);
-                state.battleTimer = null;
+        async function surrenderBattle() {
+            if (!state.battleCode) return;
+            if (!confirm('确定要投降吗？对方将直接获胜！')) return;
+            try {
+                const res = await api.battleSurrender(state.battleCode);
+                state.battleState = res.state;
+                updateBattleUI();
+            } catch (err) {
+                alert(err.message || '投降失败');
             }
-            updateBattleUI();
+        }
+
+        async function leaveBattle() {
+            if (!state.battleCode) return;
+            try {
+                const res = await api.battleLeave(state.battleCode);
+                if (res.room_deleted) {
+                    // 房间已解散
+                    alert('房间已解散');
+                } else if (res.new_creator) {
+                    // 当前用户被设为新房主
+                    alert('房主已离开，你成为了新房主');
+                    state.battleIsCreator = true;
+                    state.battleState = res.state;
+                    updateBattleUI();
+                    return;
+                } else {
+                    // 正常离开
+                    alert('已离开房间');
+                }
+                // 重置状态
+                state.battleCode = null;
+                state.battleState = null;
+                state.battleIsCreator = false;
+                if (state.battleTimer) {
+                    clearInterval(state.battleTimer);
+                    state.battleTimer = null;
+                }
+                // 移除键盘事件监听器
+                document.removeEventListener('keydown', handleBattleKey);
+                updateBattleUI();
+                // 刷新房间列表
+                if (state.currentView === 'battle') {
+                    refreshRooms();
+                }
+            } catch (err) {
+                alert(err.message || '离开房间失败');
+            }
         }
 
         function startBattlePolling() {
             if (state.battleTimer) clearInterval(state.battleTimer);
+            // 根据对战状态使用不同的轮询间隔
             state.battleTimer = setInterval(async () => {
                 if (!state.battleCode) {
                     clearInterval(state.battleTimer);
@@ -1653,15 +2122,83 @@
                 }
                 try {
                     const res = await api.battleState(state.battleCode);
-                    state.battleState = res.state;
-                    updateBattleUI();
-                    if (res.state.finished) {
-                        clearInterval(state.battleTimer);
+                    // 检查是否有重要状态变化
+                    const wasStarted = state.battleState?.started;
+                    const wasFinished = state.battleState?.finished;
+                    const isStarted = res.state.started;
+                    const isFinished = res.state.finished;
+                    
+                    // 只在状态变化时更新UI
+                    if (isStarted && !wasStarted) {
+                        state.battleState = res.state;
+                        updateBattleUI();
+                    } else if (isFinished && !wasFinished) {
+                        state.battleState = res.state;
+                        updateBattleUI();
+                    } else if (isStarted && !isFinished) {
+                        // 对战进行中，只更新次数和排名，不重新渲染整个DOM
+                        state.battleState = res.state;
+                        updateBattleCountsOnly();
+                    } else if (!isStarted && !isFinished) {
+                        // 对战未开始时，也要更新UI以显示新加入的玩家
+                        state.battleState = res.state;
+                        updateBattleUI();
                     }
-                } catch {
-                    clearInterval(state.battleTimer);
+                    
+                    if (isFinished) {
+                        clearInterval(state.battleTimer);
+                        // 移除键盘事件监听器
+                        document.removeEventListener('keydown', handleBattleKey);
+                    }
+                } catch (err) {
+                    console.error('Polling error:', err);
+                    // 如果房间不存在或过期，停止轮询并重置状态
+                    if (err.message && (err.message.includes('房间不存在') || err.message.includes('已过期'))) {
+                        clearInterval(state.battleTimer);
+                        state.battleTimer = null;
+                        state.battleCode = null;
+                        state.battleState = null;
+                        state.battleIsCreator = false;
+                        document.removeEventListener('keydown', handleBattleKey);
+                        updateBattleUI();
+                        alert('房间已不存在或已过期');
+                    }
                 }
-            }, 500);
+            }, 500); // 缩短轮询间隔到500ms，提高响应速度
+        }
+
+        function updateBattleCountsOnly() {
+            if (!state.battleState || !state.battleState.started || state.battleState.finished) return;
+            
+            const players = state.battleState.players;
+            const sorted = [...players].sort((a, b) => (b.count || 0) - (a.count || 0));
+            
+            // 只更新实时排名部分
+            const rankContainer = el('battleLiveRank');
+            const countContainer = el('battleCount');
+            
+            if (rankContainer) {
+                rankContainer.innerHTML = sorted.map((player, idx) => `
+                    <div class="board-item">
+                        <span class="board-rank">#${idx + 1}</span>
+                        <span class="board-name">${player.username}</span>
+                        <span class="board-score">${player.count || 0}次</span>
+                    </div>
+                `).join('');
+            }
+            
+            if (countContainer) {
+                // 确保类型一致，将user_id转为字符串进行比较
+                const currentPlayer = players.find(p => String(p.user_id) === String(state.user.id));
+                countContainer.innerHTML = `你的次数: <strong>${currentPlayer ? currentPlayer.count || 0 : 0}</strong>`;
+            }
+            
+            // 更新倒计时
+            const timer = el('battleTimer');
+            if (timer) {
+                const remaining = Math.max(0, Math.ceil(state.battleState.remaining));
+                timer.textContent = `剩余 ${remaining}s`;
+            }
         }
 
         function updateBattleUI() {
@@ -1670,44 +2207,356 @@
             const status = el('battleStatus');
             const board = el('battleBoard');
             const startBtn = el('battleStartBtn');
+            const readyBtn = el('battleReadyBtn');
+            const battleControls = el('battleControls');
+            const leaveBtn = battleControls?.querySelector('button:last-child');
 
             if (!state.battleCode || !state.battleState) {
                 codeTag.textContent = '未加入房间';
                 timer.textContent = '未开始';
                 status.textContent = '创建或加入房间后即可开始。';
                 board.innerHTML = '';
-                startBtn.disabled = false;
+                // 未加入房间时隐藏整个battle-controls容器
+                if (battleControls) {
+                    battleControls.style.display = 'none';
+                }
                 return;
+            }
+            
+            // 加入房间后显示battle-controls容器
+            if (battleControls) {
+                battleControls.style.display = 'flex';
             }
 
             const s = state.battleState;
             codeTag.textContent = `房间: ${state.battleCode}`;
 
+            // 当前玩家信息
+            const currentPlayer = state.user ? s.players.find(p => String(p.user_id) === String(state.user.id)) : null;
+            const isReady = currentPlayer ? currentPlayer.ready : false;
+
             if (s.finished) {
                 timer.textContent = '已结束';
                 status.textContent = '对战结束！';
                 startBtn.disabled = true;
+                startBtn.style.display = 'none';
+                readyBtn.style.display = 'none';
+                // 对战结束时显示离开按钮
+                if (leaveBtn) {
+                    leaveBtn.style.display = 'inline-block';
+                    leaveBtn.textContent = '离开房间';
+                }
+                renderBattleResult(s.players);
             } else if (s.started) {
                 const remaining = Math.max(0, Math.ceil(s.remaining));
                 timer.textContent = `剩余 ${remaining}s`;
                 status.textContent = '对战进行中，疯狂撸动香蕉！';
                 startBtn.disabled = true;
+                startBtn.style.display = 'none';
+                readyBtn.style.display = 'none';
+                // 对战进行中显示离开按钮
+                if (leaveBtn) {
+                    leaveBtn.style.display = 'inline-block';
+                    leaveBtn.textContent = '离开房间';
+                }
+                renderBattleInProgress(s.players);
             } else {
                 timer.textContent = '等待开始';
-                status.textContent = `已有 ${Object.keys(s.players || {}).length} 人加入，房主可开始。`;
-                startBtn.disabled = !state.battleIsCreator;
+                // 计算已准备玩家数量
+                const readyCount = s.players.filter(p => p.ready).length;
+                const totalCount = s.players.length;
+                status.textContent = `已有 ${totalCount} 人加入，${readyCount} 人已准备，房主可开始。`;
+                
+                // 只有房主可以看到开始按钮
+                startBtn.style.display = state.battleIsCreator ? 'inline-block' : 'none';
+                startBtn.disabled = false; // 房主始终可以点击开始
+                
+                // 显示准备按钮
+                readyBtn.style.display = 'inline-block';
+                readyBtn.textContent = isReady ? '取消准备' : '准备';
+                readyBtn.className = isReady ? 'btn primary' : 'btn ghost';
+                
+                // 根据玩家数量和房主状态更新离开按钮
+                if (leaveBtn) {
+                    leaveBtn.style.display = 'inline-block';
+                    if (state.battleIsCreator && totalCount === 1) {
+                        // 房主是房间的最后一个人，显示解散房间
+                        leaveBtn.textContent = '解散房间';
+                    } else {
+                        // 显示离开房间
+                        leaveBtn.textContent = '离开房间';
+                    }
+                }
+                
+                renderPlayerList(s.players);
             }
+        }
 
-            // 渲染实时榜单
-            const players = s.players || {};
-            const sorted = Object.entries(players).sort((a, b) => b[1] - a[1]);
-            board.innerHTML = sorted.map(([name, score], idx) => `
+        function renderPlayerList(players) {
+            const board = el('battleBoard');
+            const sorted = [...players].sort((a, b) => {
+                // 先按准备状态排序，再按用户名排序
+                if (a.ready !== b.ready) {
+                    return a.ready ? -1 : 1;
+                }
+                return a.username.localeCompare(b.username);
+            });
+            board.innerHTML = sorted.map((player, idx) => `
                 <div class="board-item">
-                    <span class="board-rank">#${idx + 1}</span>
-                    <span class="board-name">${name}</span>
-                    <span class="board-score">${score}</span>
+                    <span class="board-rank">${player.ready ? '✅' : '⏳'}</span>
+                    <span class="board-name">${player.username}</span>
+                    <span class="board-status">${player.ready ? '已准备' : '未准备'}</span>
                 </div>
             `).join('');
+        }
+
+        // 设置对战香蕉交互
+        function setupBattleBanana() {
+            const box = el('battleBananaBox');
+            const banana = el('battleBanana');
+            if (!box || !banana) return;
+
+            let startY = null;
+            let isDragging = false;
+
+            const onStart = (y) => {
+                startY = y;
+                isDragging = true;
+                box.classList.add('active');
+            };
+
+            const onMove = (y) => {
+                if (!isDragging || startY === null) return;
+                const delta = Math.max(-80, Math.min(80, y - startY));
+                banana.style.transform = `translateY(${delta * 0.6}px)`;
+            };
+
+            const onEnd = async (y) => {
+                if (!isDragging || startY === null) return;
+                const delta = y - startY;
+                isDragging = false;
+                startY = null;
+                box.classList.remove('active');
+                banana.style.transform = 'translateY(0)';
+
+                if (Math.abs(delta) > 50) {
+                    // 请求限流检查
+                    if (rateLimiter.canRequest()) {
+                        rateLimiter.consume();
+                        await battleTap();
+                    }
+                }
+            };
+
+            // Pointer events
+            box.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                box.setPointerCapture(e.pointerId);
+                onStart(e.clientY);
+            });
+
+            box.addEventListener('pointermove', (e) => {
+                onMove(e.clientY);
+            });
+
+            box.addEventListener('pointerup', (e) => {
+                onEnd(e.clientY);
+            });
+
+            box.addEventListener('pointercancel', () => {
+                isDragging = false;
+                startY = null;
+                box.classList.remove('active');
+                banana.style.transform = 'translateY(0)';
+            });
+        }
+
+        function renderBattleInProgress(players) {
+            const board = el('battleBoard');
+            const sorted = [...players].sort((a, b) => (b.count || 0) - (a.count || 0));
+            
+            board.innerHTML = `
+                <!-- 对战香蕉区域 -->
+                <div class="battle-banana-container">
+                    <div class="banana-box" id="battleBananaBox" style="margin: 20px auto; text-align: center;">
+                        <div class="banana" id="battleBanana" style="font-size: 60px; cursor: pointer; transition: transform 0.1s ease;">🍌</div>
+                        <div class="banana-hint">
+                            <span class="banana-arrow">⬆️⬇️</span>
+                            <span>疯狂上下撸动！</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 对战控制按钮 -->
+                    <div style="text-align: center; margin: 15px 0;">
+                        <button class="btn ghost" onclick="surrenderBattle()" style="border-color: #ff6b6b; color: #ff6b6b;">🏳️ 投降</button>
+                    </div>
+                    
+                    <!-- 实时计数 -->
+                    <div class="battle-count" id="battleCount" style="text-align: center; font-size: 1.2rem; margin: 10px 0;">
+                        你的次数: <strong>${(() => {
+                            if (!state.user) return 0;
+                            // 先从当前players数组中直接查找，确保获取最新数据
+                            const currentPlayer = players.find(p => String(p.user_id) === String(state.user.id));
+                            if (currentPlayer) return currentPlayer.count || 0;
+                            // 后备方案：从排序后的数组中查找
+                            const sortedPlayer = sorted.find(p => String(p.user_id) === String(state.user.id));
+                            return sortedPlayer ? sortedPlayer.count || 0 : 0;
+                        })()}</strong>
+                    </div>
+                    
+                    <!-- 实时榜单 -->
+                    <div class="battle-live-rank" id="battleLiveRank" style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 10px; color: var(--accent-cyan);">实时排名</h4>
+                        ${sorted.map((player, idx) => `
+                            <div class="board-item">
+                                <span class="board-rank">#${idx + 1}</span>
+                                <span class="board-name">${player.username}</span>
+                                <span class="board-score">${player.count || 0}次</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            // 设置对战香蕉交互
+            setupBattleBanana();
+            
+            // 先移除之前可能存在的事件监听器，防止重复绑定
+            document.removeEventListener('keydown', handleBattleKey);
+            
+            // 为香蕉添加点击事件（带限流）
+            const battleBanana = el('battleBanana');
+            if (battleBanana) {
+                battleBanana.addEventListener('click', () => {
+                    if (rateLimiter.canRequest()) {
+                        rateLimiter.consume();
+                        battleTap();
+                    }
+                });
+                // 支持键盘上下箭头
+                document.addEventListener('keydown', handleBattleKey);
+            }
+        }
+
+        function renderBattleResult(players) {
+            const board = el('battleBoard');
+            const sorted = [...players].sort((a, b) => (b.count || 0) - (a.count || 0));
+            
+            // 检查结果类型
+            const surrenderResult = state.battleState?.surrender_result;
+            const winnerId = state.battleState?.winner_id;
+            const surrendered = state.battleState?.surrendered || [];
+            // 将 surrendered 数组中的 ID 统一转为字符串，方便比较
+            const surrenderedStr = surrendered.map(id => String(id));
+            
+            // 判断是否平局（第一名和第二名次数相同）
+            const isDraw = !surrenderResult && sorted.length >= 2 && (sorted[0].count || 0) === (sorted[1].count || 0);
+            
+            // 确定当前用户的角色
+            let isWinner = false;
+            let isSurrendered = false;
+            let resultTitle = '';
+            let resultColor = '';
+            let winner = null;
+            
+            // 先尝试找到 winner，确保不为 null
+            if (winnerId !== null && winnerId !== undefined) {
+                winner = players.find(p => String(p.user_id) === String(winnerId));
+            }
+            // 如果没找到 winner，使用排名第一的玩家
+            if (!winner && sorted.length > 0) {
+                winner = sorted[0];
+            }
+            // 如果还是没有，创建一个默认对象防止错误
+            if (!winner) {
+                winner = { username: '未知', count: 0, user_id: '' };
+            }
+            
+            if (surrenderResult === 'draw') {
+                resultTitle = '🤝 平局！';
+                resultColor = '#a855f7';
+            } else if (surrenderResult === 'surrender') {
+                // 检查当前用户是否在投降列表中（使用字符串比较）
+                isSurrendered = state.user && surrenderedStr.includes(String(state.user.id));
+                isWinner = state.user && String(winner.user_id) === String(state.user.id);
+                
+                if (isSurrendered) {
+                    resultTitle = '🏳️ 你已投降';
+                    resultColor = '#ff6b6b';
+                } else if (isWinner) {
+                    resultTitle = '🎉 对方投降，你获胜！';
+                    resultColor = '#ffd700';
+                } else {
+                    resultTitle = '🎯 对战结束';
+                    resultColor = '#ff6b6b';
+                }
+            } else if (isDraw) {
+                resultTitle = '🤝 平局！';
+                resultColor = '#a855f7';
+            } else {
+                isWinner = state.user && String(winner.user_id) === String(state.user.id);
+                resultTitle = isWinner ? '🎉 胜利！' : '💔 失败';
+                resultColor = isWinner ? '#ffd700' : '#ff6b6b';
+            }
+            
+            board.innerHTML = `
+                <!-- 对战结果 -->
+                <div class="battle-result" style="text-align: center; margin: 20px 0;">
+                    <h3 style="color: ${resultColor}; margin-bottom: 15px;">
+                        ${resultTitle}
+                    </h3>
+                    ${surrenderResult !== 'draw' && !isDraw ? `
+                    <div class="winner-info" style="margin: 15px 0; padding: 15px; background: var(--bg-secondary); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; margin-bottom: 10px;">${isWinner ? '🎉 胜利' : '💔 失败'}</div>
+                        <div style="font-weight: bold;">${winner.username}</div>
+                        <div style="font-size: 2rem; color: var(--accent-yellow); margin: 10px 0;">${winner.count || 0}次</div>
+                    </div>
+                    ` : `
+                    <div class="draw-info" style="margin: 15px 0; padding: 15px; background: var(--bg-secondary); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; margin-bottom: 10px;">🤝 平局</div>
+                        <div style="color: var(--text-secondary);">
+                            ${surrenderResult === 'draw' ? '所有玩家都已投降' : `双方都达到了 ${sorted[0].count || 0} 次`}
+                        </div>
+                    </div>
+                    `}
+                    
+                    <!-- 最终排名 -->
+                    <div class="final-rank" style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 10px; color: var(--accent-cyan);">最终排名</h4>
+                        ${sorted.map((player, idx) => {
+                            const rankDisplay = isDraw && idx < 2 ? '🤝' : 
+                                              idx === 0 ? '🥇' : 
+                                              idx === 1 ? '🥈' : 
+                                              idx === 2 ? '🥉' : `#${idx + 1}`;
+                            return `
+                                <div class="board-item">
+                                    <span class="board-rank">${rankDisplay}</span>
+                                    <span class="board-name">${player.username}</span>
+                                    <span class="board-score">${player.count || 0}次</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    
+                    <!-- 再来一局按钮 -->
+                    <div style="margin-top: 20px; text-align: center;">
+                        <button class="btn primary" onclick="battleRematch()" style="margin-right: 10px;">🔄 再来一局</button>
+                        <button class="btn ghost" onclick="leaveBattle()">👋 离开房间</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function handleBattleKey(e) {
+            if (state.currentView === 'battle' && state.battleState?.started && !state.battleState?.finished) {
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    // 请求限流检查
+                    if (rateLimiter.canRequest()) {
+                        rateLimiter.consume();
+                        battleTap();
+                    }
+                }
+            }
         }
 
         // ========== 设置 ==========
@@ -1738,6 +2587,149 @@
                 alert('密码已重置，请用新密码登录');
             } catch (err) {
                 alert(err.message);
+            }
+        }
+
+        async function changeUsername() {
+            const newUsername = el('newUsernameInput').value.trim();
+            const password = el('usernameConfirmPwd').value;
+            if (newUsername.length < 3) {
+                alert('用户名至少3个字符');
+                return;
+            }
+            if (!password) {
+                alert('请输入密码确认');
+                return;
+            }
+            try {
+                const res = await api.changeUsername(newUsername, password);
+                alert('用户名修改成功');
+                // 更新本地状态
+                if (state.user) {
+                    state.user.username = res.new_username;
+                    renderUserCard();
+                }
+                // 清空输入框
+                el('newUsernameInput').value = '';
+                el('usernameConfirmPwd').value = '';
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        // ========== 对战历史和排行榜 ==========
+        async function loadBattleRanking() {
+            try {
+                const res = await api.battleRanking();
+                renderBattleRanking(res.ranking, res.my_stats);
+            } catch (err) {
+                console.error('加载对战排行榜失败:', err);
+            }
+        }
+
+        function renderBattleRanking(ranking, myStats) {
+            // 更新我的战绩
+            if (myStats) {
+                el('myBattleScore').textContent = myStats.score || 0;
+                el('myBattleWins').textContent = myStats.wins || 0;
+                el('myBattleLosses').textContent = myStats.losses || 0;
+                el('myBattleDraws').textContent = myStats.draws || 0;
+            }
+
+            const listEl = el('battleRankingList');
+            if (!ranking || ranking.length === 0) {
+                listEl.innerHTML = '<div class="empty-state">暂无排行数据</div>';
+                return;
+            }
+
+            listEl.innerHTML = ranking.map(item => {
+                const rankEmoji = item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : `#${item.rank}`;
+                return `
+                    <div class="ranking-item">
+                        <span class="rank">${rankEmoji}</span>
+                        <span class="name">${item.username}</span>
+                        <span class="stats">
+                            <span class="score">${item.score}分</span>
+                            <span>${item.wins}胜/${item.losses}负/${item.draws}平</span>
+                        </span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadBattleHistory() {
+            try {
+                const res = await api.battleHistory(20, 0);
+                renderBattleHistory(res.history);
+            } catch (err) {
+                console.error('加载对战历史失败:', err);
+            }
+        }
+
+        function renderBattleHistory(history) {
+            const listEl = el('battleHistoryList');
+            if (!history || history.length === 0) {
+                listEl.innerHTML = '<div class="empty-state">暂无对战记录</div>';
+                return;
+            }
+
+            listEl.innerHTML = history.map(item => {
+                // 判断当前用户的胜负
+                let resultClass = '';
+                let resultText = '';
+                if (item.result_type === 'draw') {
+                    resultClass = 'draw';
+                    resultText = '平局';
+                } else if (state.user && item.winner_id === state.user.id) {
+                    resultClass = 'win';
+                    resultText = '胜利';
+                } else if (state.user && (item.player1.id === state.user.id || item.player2.id === state.user.id)) {
+                    resultClass = 'lose';
+                    resultText = '失败';
+                } else {
+                    // 不是当前用户参与的对战
+                    if (item.winner_id === item.player1.id) {
+                        resultText = `${item.player1.name}胜`;
+                    } else if (item.winner_id === item.player2.id) {
+                        resultText = `${item.player2.name}胜`;
+                    } else {
+                        resultText = '平局';
+                    }
+                }
+
+                const timeStr = new Date(item.created_at).toLocaleString('zh-CN', { 
+                    month: 'numeric', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+
+                return `
+                    <div class="history-item">
+                        <div class="players">
+                            <span>${item.player1.name}(${item.player1.count})</span>
+                            <span class="vs">VS</span>
+                            <span>${item.player2.name}(${item.player2.count})</span>
+                        </div>
+                        <span class="result ${resultClass}">${resultText}</span>
+                        <span class="time">${timeStr}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function battleRematch() {
+            if (!state.battleCode) return;
+            try {
+                const res = await api.battleRematch(state.battleCode);
+                state.battleCode = res.code;
+                state.battleIsCreator = true;
+                state.battleState = res.state;
+                startBattlePolling();
+                updateBattleUI();
+                alert('已创建新房间，等待其他玩家加入');
+            } catch (err) {
+                alert(err.message || '创建再来一局失败');
             }
         }
 
